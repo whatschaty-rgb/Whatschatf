@@ -9,6 +9,8 @@ import { supabase, getCurrentUser, uploadFile, getSignedUrl } from './supabaseCl
 const state = {
   user: null,
   profile: null,
+  themeMode: 'dark',
+  themeColor: 'green',
   conversations: [],
   activeConversation: null,
   messages: [],
@@ -244,6 +246,7 @@ function clearAppState() {
 
 // INIT
 async function init() {
+  initTheme();
   buildEmojiPicker();
   attachAuthListeners();
   attachModalListeners();
@@ -1735,12 +1738,53 @@ function teardownRealtime() {
   if (state.convChannel) supabase.removeChannel(state.convChannel);
 }
 
+// THEME MANAGEMENT
+function applyTheme(mode = 'dark', color = 'green') {
+  if (mode) state.themeMode = mode;
+  if (color) state.themeColor = color;
+
+  document.documentElement.setAttribute('data-theme-mode', state.themeMode);
+  document.documentElement.setAttribute('data-theme-color', state.themeColor);
+
+  setLocalCache('theme_mode', state.themeMode);
+  setLocalCache('theme_color', state.themeColor);
+
+  $$('.theme-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === state.themeMode);
+  });
+  $$('.swatch').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.color === state.themeColor);
+  });
+}
+
+function initTheme() {
+  const savedMode = getLocalCache('theme_mode') || 'dark';
+  const savedColor = getLocalCache('theme_color') || 'green';
+  applyTheme(savedMode, savedColor);
+
+  $$('.theme-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyTheme(btn.dataset.mode, state.themeColor);
+    });
+  });
+
+  $$('.swatch').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyTheme(state.themeMode, btn.dataset.color);
+    });
+  });
+}
+
 // PROFILE MODAL
 async function openProfileModal() {
   $('#profile-name').value = state.profile?.full_name || '';
   $('#profile-status').value = state.profile?.status_msg || '';
   $('#profile-email-display').textContent = state.profile?.email || '';
   $('#profile-avatar-preview').src = avatarSrc(state.profile);
+
+  // Sync theme active buttons
+  applyTheme(state.themeMode, state.themeColor);
+
   openModal('modal-profile');
 }
 

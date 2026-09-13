@@ -12,7 +12,7 @@
 }
 
 :root {
-  /* Paleta WhatsApp Dark */
+  /* Paleta WhatsApp Dark (Padrão) */
   --bg-primary:      #111b21;
   --bg-secondary:    #202c33;
   --bg-tertiary:     #2a3942;
@@ -45,6 +45,92 @@
 
   /* Animações */
   --transition:      0.2s ease;
+}
+
+/* ─── TEMAS DE CORES PRIMÁRIAS ──────────────────────────── */
+[data-theme-color="green"] {
+  --accent:       #00a884;
+  --accent-hover: #06cf9c;
+  --accent-dark:  #00785e;
+  --bg-msg-out:   #005c4b;
+}
+
+[data-theme-color="blue"] {
+  --accent:       #0284c7;
+  --accent-hover: #38bdf8;
+  --accent-dark:  #0369a1;
+  --bg-msg-out:   #034a6e;
+}
+
+[data-theme-color="purple"] {
+  --accent:       #8b5cf6;
+  --accent-hover: #a78bfa;
+  --accent-dark:  #6d28d9;
+  --bg-msg-out:   #4c1d95;
+}
+
+[data-theme-color="pink"] {
+  --accent:       #ec4899;
+  --accent-hover: #f472b6;
+  --accent-dark:  #be185d;
+  --bg-msg-out:   #831843;
+}
+
+[data-theme-color="orange"] {
+  --accent:       #f97316;
+  --accent-hover: #fb923c;
+  --accent-dark:  #c2410c;
+  --bg-msg-out:   #7c2d12;
+}
+
+[data-theme-color="emerald"] {
+  --accent:       #10b981;
+  --accent-hover: #34d399;
+  --accent-dark:  #047857;
+  --bg-msg-out:   #064e3b;
+}
+
+/* ─── MODOS DE APARÊNCIA ────────────────────────────────── */
+[data-theme-mode="dark"] {
+  --bg-primary:    #111b21;
+  --bg-secondary:  #202c33;
+  --bg-tertiary:   #2a3942;
+  --bg-hover:      #2a3942cc;
+  --bg-input:      #2a3942;
+  --bg-msg-in:     #202c33;
+  --text-primary:  #e9edef;
+  --text-secondary:#8696a0;
+  --text-muted:    #667781;
+  --border:        #2a3942;
+  --shadow:        rgba(0,0,0,0.35);
+}
+
+[data-theme-mode="oled"] {
+  --bg-primary:    #000000;
+  --bg-secondary:  #0b0f12;
+  --bg-tertiary:   #161f26;
+  --bg-hover:      #1c2730;
+  --bg-input:      #161f26;
+  --bg-msg-in:     #12181d;
+  --text-primary:  #ffffff;
+  --text-secondary:#94a3b8;
+  --text-muted:    #64748b;
+  --border:        #1e293b;
+  --shadow:        rgba(0,0,0,0.7);
+}
+
+[data-theme-mode="light"] {
+  --bg-primary:    #efeae2;
+  --bg-secondary:  #ffffff;
+  --bg-tertiary:   #f0f2f5;
+  --bg-hover:      #e4e6eb;
+  --bg-input:      #f0f2f5;
+  --bg-msg-in:     #ffffff;
+  --text-primary:  #111b21;
+  --text-secondary:#667781;
+  --text-muted:    #8696a0;
+  --border:        #e9edef;
+  --shadow:        rgba(0,0,0,0.12);
 }
 
 html, body {
@@ -1619,12 +1705,92 @@ input:checked + .slider:before {
   border-radius: 50%;
 }
 
-/* Profile Modal */
+/* Profile Modal & Theme Selection */
 .profile-email {
   font-size: 0.8rem;
   color: var(--text-muted);
   text-align: center;
-  margin-top: -8px;
+  margin-top: 4px;
+}
+
+.theme-group {
+  margin-top: 2px;
+}
+
+.theme-mode-options {
+  display: flex;
+  gap: 6px;
+  background: var(--bg-primary);
+  padding: 4px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.theme-mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.theme-mode-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.theme-mode-btn.active {
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.color-swatches {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform var(--transition), border-color var(--transition);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.swatch:hover {
+  transform: scale(1.15);
+}
+
+.swatch.active {
+  border-color: var(--text-primary);
+  transform: scale(1.15);
+}
+
+.swatch.active::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
 }
 
 /* ─── 8. TOAST ─────────────────────────────────────────── */
