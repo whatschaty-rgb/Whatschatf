@@ -725,18 +725,18 @@ textarea { resize: none; }
   max-width: 75%;
   margin: 3px 0;
   position: relative;
+  cursor: pointer;
+  user-select: none;
 }
 
 .msg.out {
   align-self: flex-end;
-  flex-direction: row;
   justify-content: flex-end;
 }
 
 .msg.in {
   align-self: flex-start;
-  flex-direction: row-reverse;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .msg-bubble {
@@ -748,49 +748,18 @@ textarea { resize: none; }
   line-height: 1.5;
   font-size: 0.9rem;
   max-width: 100%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, outline 0.15s ease;
+}
+
+.msg.selected .msg-bubble {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 14px rgba(0, 168, 132, 0.5) !important;
+  transform: scale(1.01);
 }
 
 .msg-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  padding: 3px 6px;
-  opacity: 0;
-  transition: opacity var(--transition);
-  box-shadow: 0 4px 12px var(--shadow);
-  flex-shrink: 0;
-  user-select: none;
-}
-
-.msg:hover .msg-actions {
-  opacity: 1;
-}
-
-.msg-action-btn {
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  transition: background var(--transition), color var(--transition);
-}
-
-.msg-action-btn:hover, .msg-action-btn:active {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.msg-action-btn-danger:hover, .msg-action-btn-danger:active {
-  background: rgba(239, 68, 68, 0.2) !important;
-  color: var(--danger) !important;
+  display: none !important;
 }
 
 .msg.out .msg-bubble {

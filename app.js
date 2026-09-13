@@ -35,6 +35,7 @@ const state = {
   unreadCounts: {},
   searchTimeout: null,
   editingMessageId: null,
+  selectedMessageId: null,
   adminUsers: [],
 };
 
@@ -469,19 +470,9 @@ function buildConvItem(conv) {
         <span class="conv-item-preview">${escapeHtml(previewText)}</span>
         ${unread > 0 ? `<span class="conv-item-badge">${unread}</span>` : ''}
       </div>
-    </div>
-    <button class="conv-item-delete" title="Excluir conversa" aria-label="Excluir conversa">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-    </button>`;
+    </div>`;
   
   item.addEventListener('click', () => openConversation(conv));
-  const deleteBtn = item.querySelector('.conv-item-delete');
-  if (deleteBtn) {
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteConversation(conv);
-    });
-  }
   return item;
 }
 
@@ -491,6 +482,7 @@ function isMobileView() {
 
 // OPEN CONVERSATION
 async function openConversation(conv) {
+  if (window._deselectMessage) window._deselectMessage();
   state.activeConversation = conv;
   state.unreadCounts[conv.id] = 0;
   if (state.user) setLocalCache(`active_conv_${state.user.id}`, conv.id);
@@ -598,9 +590,60 @@ function renderMessages() {
   });
 }
 
+window._toggleMessageSelection = function(msg) {
+  if (state.selectedMessageId === msg.id) {
+    window._deselectMessage();
+  } else {
+    window._selectMessage(msg);
+  }
+};
+
+window._selectMessage = function(msg) {
+  window._deselectMessage();
+  state.selectedMessageId = msg.id;
+
+  const msgEl = $(`.msg[data-id="${msg.id}"]`);
+  if (msgEl) msgEl.classList.add('selected');
+
+  const isOwner = msg.sender_id === state.user?.id;
+  const isAdmin = state.profile?.role === 'admin';
+  const canEdit = isOwner && msg.media_type === 'text';
+  const canDelete = isOwner || isAdmin;
+
+  const btnEdit = $('#btn-hdr-edit-msg');
+  const btnDelete = $('#btn-hdr-delete-msg');
+  const btnCancel = $('#btn-hdr-cancel-sel');
+  const btnEditGroup = $('#btn-edit-group');
+
+  if (btnEditGroup) hide(btnEditGroup);
+
+  if (canEdit && btnEdit) show(btnEdit); else if (btnEdit) hide(btnEdit);
+  if (canDelete && btnDelete) show(btnDelete); else if (btnDelete) hide(btnDelete);
+  if (btnCancel) show(btnCancel);
+};
+
+window._deselectMessage = function() {
+  state.selectedMessageId = null;
+  $$('.msg.selected').forEach(el => el.classList.remove('selected'));
+
+  const btnEdit = $('#btn-hdr-edit-msg');
+  const btnDelete = $('#btn-hdr-delete-msg');
+  const btnCancel = $('#btn-hdr-cancel-sel');
+  const btnEditGroup = $('#btn-edit-group');
+
+  if (btnEdit) hide(btnEdit);
+  if (btnDelete) hide(btnDelete);
+  if (btnCancel) hide(btnCancel);
+
+  if (state.activeConversation?.is_group && btnEditGroup) {
+    show(btnEditGroup);
+  }
+};
+
 function buildMsgEl(msg) {
   const isOut = msg.sender_id === state.user?.id;
-  const wrapper = createEl('div', { className: `msg ${isOut ? 'out' : 'in'}`, 'data-id': msg.id });
+  const isSelected = state.selectedMessageId === msg.id;
+  const wrapper = createEl('div', { className: `msg ${isOut ? 'out' : 'in'}${isSelected ? ' selected' : ''}`, 'data-id': msg.id });
   let senderHtml = '';
   if (!isOut && state.activeConversation?.is_group) {
     const senderName = msg.sender?.full_name || msg.sender?.email || 'Usuario';
@@ -616,17 +659,7 @@ function buildMsgEl(msg) {
   } else {
     contentHtml = `<div>${escapeHtml(msg.content || '')}</div>`;
   }
-  let actionsHtml = '';
-  if (isOut) {
-    const editBtn = msg.media_type === 'text' ? `<button class="msg-action-btn" onclick="window._editMsg('${msg.id}')" title="Editar"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>` : '';
-    actionsHtml = `
-      <div class="msg-actions">
-        ${editBtn}
-        <button class="msg-action-btn msg-action-btn-danger" onclick="window._deleteMsg('${msg.id}')" title="Excluir"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
-      </div>`;
-  }
   wrapper.innerHTML = `
-    ${actionsHtml}
     <div class="msg-bubble">
       ${senderHtml}
       ${contentHtml}
@@ -635,6 +668,12 @@ function buildMsgEl(msg) {
         ${ticksHTML(msg)}
       </div>
     </div>`;
+
+  wrapper.addEventListener('click', (e) => {
+    if (e.target.closest('.audio-play-btn, .audio-progress, .msg-image img, a')) return;
+    window._toggleMessageSelection(msg);
+  });
+
   return wrapper;
 }
 
@@ -2060,9 +2099,29 @@ function attachModalListeners() {
     $('#edit-group-avatar-preview').src = URL.createObjectURL(file);
   });
 
-  $('#btn-delete-chat').addEventListener('click', () => {
-    if (state.activeConversation) {
-      deleteConversation(state.activeConversation);
+  $('#btn-hdr-edit-msg')?.addEventListener('click', () => {
+    if (state.selectedMessageId) {
+      const msgId = state.selectedMessageId;
+      window._deselectMessage();
+      window._editMsg(msgId);
+    }
+  });
+
+  $('#btn-hdr-delete-msg')?.addEventListener('click', async () => {
+    if (state.selectedMessageId) {
+      const msgId = state.selectedMessageId;
+      window._deselectMessage();
+      await window._deleteMsg(msgId);
+    }
+  });
+
+  $('#btn-hdr-cancel-sel')?.addEventListener('click', () => {
+    window._deselectMessage();
+  });
+
+  $('#messages-container')?.addEventListener('click', (e) => {
+    if (!e.target.closest('.msg')) {
+      window._deselectMessage();
     }
   });
 
