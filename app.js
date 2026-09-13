@@ -422,6 +422,9 @@ async function openConversation(conv) {
   if (window.innerWidth < 768) {
     $('#sidebar').classList.add('slide-out');
     $('#chat-area').classList.add('slide-in');
+    if (!history.state?.chatOpen) {
+      history.pushState({ chatOpen: true, convId: conv.id }, '');
+    }
   }
   updateChatHeader(conv);
   hide('#chat-welcome');
@@ -440,6 +443,16 @@ async function openConversation(conv) {
   await loadMessages(conv.id);
   subscribeToMessages(conv.id);
   markMessagesAsRead(conv.id);
+}
+
+function closeMobileChat(fromPopState = false) {
+  $('#sidebar').classList.remove('slide-out');
+  $('#chat-area').classList.remove('slide-in');
+  state.activeConversation = null;
+  if (state.user) removeLocalCache(`active_conv_${state.user.id}`);
+  if (!fromPopState && history.state?.chatOpen) {
+    history.back();
+  }
 }
 
 function updateChatHeader(conv) {
@@ -512,7 +525,7 @@ function buildMsgEl(msg) {
   let contentHtml = '';
   if (msg.media_type === 'image' && msg.media_url) {
     contentHtml = `<div class="msg-image"><img src="${msg.media_url}" alt="Imagem" loading="lazy"
-      style="cursor:pointer" onclick="window.open('${msg.media_url}','_blank')" /></div>`;
+      style="cursor:pointer" onclick="window._openLightbox('${msg.media_url}')" /></div>`;
     if (msg.content) contentHtml += `<div>${escapeHtml(msg.content)}</div>`;
   } else if (msg.media_type === 'audio' && msg.media_url) {
     contentHtml = buildAudioPlayer(msg.media_url, msg.id);
@@ -584,6 +597,22 @@ window._toggleAudio = function(btn) {
     audio.pause();
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
   }
+};
+
+window._openLightbox = function(url) {
+  let overlay = $('#lightbox-overlay');
+  if (overlay) overlay.remove();
+  overlay = createEl('div', { id: 'lightbox-overlay', className: 'lightbox-overlay' });
+  overlay.innerHTML = `
+    <button class="lightbox-close" aria-label="Fechar">&times;</button>
+    <img class="lightbox-img" src="${url}" alt="Imagem ampliada" />
+  `;
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay || e.target.closest('.lightbox-close')) {
+      overlay.remove();
+    }
+  });
+  document.body.append(overlay);
 };
 
 window._seekAudio = function(input) {
@@ -1413,10 +1442,22 @@ function attachModalListeners() {
   });
 
   $('#btn-back').addEventListener('click', () => {
-    $('#sidebar').classList.remove('slide-out');
-    $('#chat-area').classList.remove('slide-in');
-    state.activeConversation = null;
-    if (state.user) removeLocalCache(`active_conv_${state.user.id}`);
+    closeMobileChat(false);
+  });
+
+  window.addEventListener('popstate', (e) => {
+    if (window.innerWidth < 768 && !e.state?.chatOpen) {
+      closeMobileChat(true);
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 768) {
+      const sidebar = $('#sidebar');
+      const chatArea = $('#chat-area');
+      if (sidebar) sidebar.classList.remove('slide-out');
+      if (chatArea) chatArea.classList.remove('slide-in');
+    }
   });
 }
 
@@ -1506,10 +1547,13 @@ function attachCameraListeners() {
 function attachVirtualKeyboardFix() {
   if ('visualViewport' in window) {
     window.visualViewport.addEventListener('resize', () => {
-      const area = document.querySelector('.message-input-area');
-      if (!area) return;
-      const offset = window.innerHeight - window.visualViewport.height;
-      area.style.transform = offset > 150 ? `translateY(-${offset}px)` : '';
+      const app = $('#app');
+      if (!app || window.innerWidth >= 768) return;
+      const currentHeight = window.visualViewport.height;
+      app.style.height = `${currentHeight}px`;
+      if (state.activeConversation) {
+        scrollToBottom(true);
+      }
     });
   }
 }
