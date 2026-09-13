@@ -615,12 +615,12 @@ function buildMsgEl(msg) {
     actionsHtml = `
       <div class="msg-actions">
         ${editBtn}
-        <button class="msg-action-btn" onclick="window._deleteMsg('${msg.id}')" title="Excluir"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+        <button class="msg-action-btn msg-action-btn-danger" onclick="window._deleteMsg('${msg.id}')" title="Excluir"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
       </div>`;
   }
   wrapper.innerHTML = `
+    ${actionsHtml}
     <div class="msg-bubble">
-      ${actionsHtml}
       ${senderHtml}
       ${contentHtml}
       <div class="msg-meta">

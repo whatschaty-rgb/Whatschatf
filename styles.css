@@ -622,36 +622,49 @@ textarea { resize: none; }
 /* Message Bubbles */
 .msg {
   display: flex;
-  flex-direction: column;
-  max-width: 65%;
-  margin: 2px 0;
+  align-items: center;
+  gap: 6px;
+  max-width: 75%;
+  margin: 3px 0;
+  position: relative;
 }
 
-.msg.out { align-self: flex-end; align-items: flex-end; }
-.msg.in  { align-self: flex-start; align-items: flex-start; }
+.msg.out {
+  align-self: flex-end;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.msg.in {
+  align-self: flex-start;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
 
 .msg-bubble {
-  padding: 7px 10px;
+  padding: 8px 12px;
   border-radius: var(--radius-msg);
   position: relative;
   word-wrap: break-word;
   overflow-wrap: break-word;
   line-height: 1.5;
   font-size: 0.9rem;
+  max-width: 100%;
 }
 
 .msg-actions {
   display: flex;
-  gap: 4px;
-  position: absolute;
-  top: 4px;
-  right: 4px;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 3px 6px;
   opacity: 0;
   transition: opacity var(--transition);
-  background: var(--bg-msg-out);
-  border-radius: 4px;
-  padding: 2px;
-  z-index: 10;
+  box-shadow: 0 4px 12px var(--shadow);
+  flex-shrink: 0;
+  user-select: none;
 }
 
 .msg:hover .msg-actions {
@@ -659,21 +672,27 @@ textarea { resize: none; }
 }
 
 .msg-action-btn {
-  color: rgba(255,255,255,0.7);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
   cursor: pointer;
   background: transparent;
   border: none;
+  transition: background var(--transition), color var(--transition);
 }
 
-.msg-action-btn:hover {
-  background: rgba(255,255,255,0.15);
-  color: #fff;
+.msg-action-btn:hover, .msg-action-btn:active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.msg-action-btn-danger:hover, .msg-action-btn-danger:active {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: var(--danger) !important;
 }
 
 .msg.out .msg-bubble {
