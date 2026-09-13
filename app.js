@@ -1833,15 +1833,22 @@ function initWallpaper() {
 
   const uploadInput = $('#wallpaper-upload-input');
   if (uploadInput) {
-    uploadInput.addEventListener('change', e => {
+    uploadInput.addEventListener('change', async e => {
       const file = e.target.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        applyWallpaper(state.chatBg, ev.target.result);
-        showToast('Papel de parede aplicado!', 'success');
-      };
-      reader.readAsDataURL(file);
+      try {
+        // Comprime a imagem de papel de parede para caber levemente no cache
+        const compressedBlob = await compressImageFile(file, 1280, 0.82);
+        const reader = new FileReader();
+        reader.onload = ev => {
+          applyWallpaper(state.chatBg, ev.target.result);
+          showToast('Papel de parede aplicado com sucesso!', 'success');
+        };
+        reader.readAsDataURL(compressedBlob);
+      } catch (err) {
+        console.error('Erro ao processar imagem de fundo:', err);
+        showToast('Erro ao carregar imagem de fundo', 'error');
+      }
       e.target.value = '';
     });
   }

@@ -863,8 +863,18 @@ textarea { resize: none; }
   background-image: none !important;
 }
 
+[data-chat-bg="midnight"] .messages-container {
+  background-color: #0f172a !important;
+  background-image: none !important;
+}
+
 [data-chat-bg="plum"] .messages-container {
   background-color: #1a0f1a !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="violet"] .messages-container {
+  background-color: #1e1b4b !important;
   background-image: none !important;
 }
 
@@ -873,7 +883,22 @@ textarea { resize: none; }
   background-image: none !important;
 }
 
-[data-chat-bg="beige"] .messages-container {
+[data-chat-bg="emerald-bg"] .messages-container {
+  background-color: #064e3b !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="bordeaux"] .messages-container {
+  background-color: #450a0a !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="terracotta"] .messages-container {
+  background-color: #431407 !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="warm-beige"] .messages-container {
   background-color: #e5ddd5 !important;
   background-image: none !important;
 }
@@ -881,6 +906,41 @@ textarea { resize: none; }
 [data-chat-bg="softgrey"] .messages-container {
   background-color: #d1d7db !important;
   background-image: none !important;
+}
+
+[data-chat-bg="pastel-blue"] .messages-container {
+  background-color: #dbeafe !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="pastel-green"] .messages-container {
+  background-color: #dcfce7 !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="pastel-pink"] .messages-container {
+  background-color: #fce7f3 !important;
+  background-image: none !important;
+}
+
+/* Regras de Contraste para Fundos Claros */
+[data-chat-bg="warm-beige"] .msg.in .msg-bubble,
+[data-chat-bg="softgrey"] .msg.in .msg-bubble,
+[data-chat-bg="pastel-blue"] .msg.in .msg-bubble,
+[data-chat-bg="pastel-green"] .msg.in .msg-bubble,
+[data-chat-bg="pastel-pink"] .msg.in .msg-bubble {
+  background: #ffffff !important;
+  color: #111b21 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+[data-chat-bg="warm-beige"] .msg.in .msg-time,
+[data-chat-bg="softgrey"] .msg.in .msg-time,
+[data-chat-bg="pastel-blue"] .msg.in .msg-time,
+[data-chat-bg="pastel-green"] .msg.in .msg-time,
+[data-chat-bg="pastel-pink"] .msg.in .msg-time {
+  color: #667781 !important;
 }
 
 /* Ticks (read receipts) */
@@ -1899,15 +1959,16 @@ input:checked + .slider:before {
   font-weight: 500;
 }
 
-.wallpaper-swatches {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+.wallpaper-swatches-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
   padding: 8px 12px;
   background: var(--bg-primary);
   border-radius: var(--radius);
   border: 1px solid var(--border);
+  max-height: 96px;
+  overflow-y: auto;
 }
 
 .bg-swatch {

@@ -36,25 +36,30 @@ export async function getCurrentUser() {
 }
 
 // Helper: URL publica ou assinada de arquivo no Storage
-export async function getSignedUrl(path, bucket = 'chat-media', expiresIn = 3600) {
+export async function getSignedUrl(path, bucket = 'chat-media', expiresIn = 86400) {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
   try {
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-    if (data?.publicUrl) return data.publicUrl;
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(path, expiresIn);
+    if (!error && data?.signedUrl) return data.signedUrl;
   } catch (e) { /* fallback */ }
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(path, expiresIn);
-  if (error) throw error;
-  return data.signedUrl;
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data?.publicUrl || path;
 }
 
 // Helper: upload de arquivo para o Storage
 export async function uploadFile(bucket, path, file, contentType) {
+  const finalContentType = contentType || file.type || 'image/jpeg';
   const { data, error } = await supabase.storage
     .from(bucket)
     .upload(path, file, {
-      contentType,
-      upsert: false,
+      contentType: finalContentType,
+      upsert: true,
     });
   if (error) throw error;
   return data.path;
