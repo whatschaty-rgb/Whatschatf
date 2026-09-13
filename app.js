@@ -608,7 +608,8 @@ window._selectMessage = function(msg) {
   const isOwner = msg.sender_id === state.user?.id;
   const isAdmin = state.profile?.role === 'admin';
   const canEdit = isOwner && msg.media_type === 'text';
-  const canDelete = isOwner || isAdmin;
+  // O usuario pode excluir tanto as suas proprias mensagens quanto as mensagens recebidas da outra pessoa
+  const canDelete = true;
 
   const btnEdit = $('#btn-hdr-edit-msg');
   const btnDelete = $('#btn-hdr-delete-msg');

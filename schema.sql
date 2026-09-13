@@ -245,6 +245,13 @@ CREATE POLICY "messages_delete"
   TO authenticated
   USING (
     sender_id = auth.uid()
+    OR
+    public.is_conversation_participant(conversation_id, auth.uid())
+    OR
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
   );
 
 -- 8. STORAGE BUCKET: chat-media
