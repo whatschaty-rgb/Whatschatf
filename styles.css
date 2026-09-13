@@ -1670,9 +1670,34 @@ input:checked + .slider:before {
   background: var(--accent);
 }
 
-/* ─── 10. RESPONSIVE MEDIA QUERIES ────────────────────────── */
+/* ─── 10. RESPONSIVE MEDIA QUERIES (MOBILE-FIRST POLISHED) ────────── */
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .icon-btn:active, .btn-primary:active, .btn-secondary:active, .conv-item:active {
+    opacity: 0.75;
+    transform: scale(0.96);
+  }
+
+  .conv-item-delete {
+    opacity: 0.9 !important;
+  }
+
+  .msg-actions {
+    opacity: 0.9 !important;
+  }
+}
+
 /* Mobile & Tablet Screens (<= 960px) */
 @media (max-width: 960px) {
+  html, body {
+    height: 100dvh;
+    width: 100vw;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+  }
+
   .app {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
@@ -1680,92 +1705,187 @@ input:checked + .slider:before {
     inset: 0;
     width: 100vw;
     height: 100dvh;
-    height: 100%;
+    overflow: hidden;
   }
 
   .sidebar {
     position: absolute;
     inset: 0;
     z-index: 10;
-    transform: translateX(0);
-    transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1);
     width: 100%;
-    height: 100%;
+    height: 100dvh;
+    transform: translate3d(0, 0, 0);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+    padding-top: env(safe-area-inset-top);
   }
 
   .sidebar.slide-out {
-    transform: translateX(-100%);
+    transform: translate3d(-100%, 0, 0);
+  }
+
+  .sidebar-header {
+    padding-top: max(10px, env(safe-area-inset-top));
+    height: calc(var(--header-height) + env(safe-area-inset-top));
   }
 
   .chat-area {
     position: absolute;
     inset: 0;
     z-index: 5;
-    transform: translateX(100%);
-    transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1);
     width: 100%;
-    height: 100%;
+    height: 100dvh;
+    transform: translate3d(100%, 0, 0);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
   }
 
   .chat-area.slide-in {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
     z-index: 20;
+  }
+
+  .chat-header {
+    padding-top: max(8px, env(safe-area-inset-top));
+    height: calc(var(--header-height) + env(safe-area-inset-top));
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
   }
 
   .back-btn {
     display: flex !important;
+    width: 44px;
+    height: 44px;
+    margin-right: 2px;
   }
 
   .chat-welcome {
     display: none !important;
   }
 
-  /* Full width messages on mobile */
   .msg {
     max-width: 85%;
   }
 
-  /* Always show message action buttons on mobile touch tap */
-  .msg-actions {
-    opacity: 0.85;
-  }
-
-  /* Fix virtual keyboard sticky area */
   .message-input-area {
     position: relative;
     bottom: 0;
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
-  }
-}
-
-/* Small Mobile Screens (< 480px) */
-@media (max-width: 480px) {
-  .auth-card {
-    padding: 24px 18px;
-    border-radius: 12px;
-  }
-
-  .auth-logo h1 {
-    font-size: 1.4rem;
-  }
-
-  .msg {
-    max-width: 88%;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-left: max(6px, env(safe-area-inset-left));
+    padding-right: max(6px, env(safe-area-inset-right));
   }
 
   .message-input-row {
-    padding: 6px 8px;
-    gap: 4px;
-  }
-
-  .input-icon-btn {
-    width: 36px;
-    height: 36px;
+    gap: 6px;
+    padding: 8px;
   }
 
   .input-text-wrap textarea {
-    font-size: 0.9rem;
-    padding: 8px 10px;
+    font-size: 16px; /* Evita zoom automático no iOS */
+  }
+}
+
+/* Modals em Formato Bottom Sheet para Celulares (< 640px) */
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+  }
+
+  .modal-card {
+    border-radius: 20px 20px 0 0;
+    max-width: 100%;
+    width: 100vw;
+    max-height: 88dvh;
+    animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+  }
+
+  .modal-card::before {
+    content: '';
+    display: block;
+    width: 38px;
+    height: 4px;
+    background: var(--text-muted);
+    border-radius: 2px;
+    margin: 8px auto 2px;
+    opacity: 0.5;
+  }
+
+  @keyframes slideUpSheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .modal-header {
+    padding: 12px 18px;
+  }
+
+  .modal-body {
+    padding: 16px 18px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .modal-footer {
+    padding: 12px 18px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  /* Admin Panel em Mobile */
+  .admin-modal-card {
+    width: 100vw;
+    max-height: 92dvh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .admin-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .admin-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-tab {
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+
+  .admin-filter-pills {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .admin-filter-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-filter-pill {
+    flex-shrink: 0;
+  }
+
+  .admin-user-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .admin-user-actions {
+    justify-content: flex-end;
+    width: 100%;
+    gap: 6px;
+    border-top: 1px solid rgba(42, 57, 66, 0.4);
+    padding-top: 6px;
   }
 
   .emoji-picker {
@@ -1773,27 +1893,59 @@ input:checked + .slider:before {
     right: 8px;
     width: auto;
     max-width: calc(100vw - 16px);
-    bottom: 65px;
+    bottom: 70px;
   }
 
-  .modal-overlay {
-    padding: 8px;
+  .emoji-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Small Mobile Screens (< 480px) */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 24px 18px;
+    border-radius: 16px;
   }
 
-  .modal-card {
-    border-radius: 12px;
+  .auth-logo h1 {
+    font-size: 1.4rem;
   }
 
-  .modal-header {
-    padding: 12px 16px;
+  .form-group input {
+    font-size: 16px; /* Evita zoom automático no iOS Safari */
   }
 
-  .modal-body {
-    padding: 14px 16px;
+  .msg {
+    max-width: 88%;
   }
 
-  .modal-footer {
-    padding: 12px 16px;
+  .msg-image img {
+    max-width: 220px;
+    max-height: 220px;
+  }
+
+  .audio-audio-player {
+    min-width: 160px;
+  }
+
+  .message-input-row {
+    padding: 6px 4px;
+    gap: 2px;
+  }
+
+  .input-icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .btn-send {
+    width: 40px;
+    height: 40px;
+  }
+
+  .conv-item {
+    padding: 12px 14px;
   }
 }
 
