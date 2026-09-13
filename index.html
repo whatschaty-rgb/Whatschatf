@@ -511,9 +511,15 @@
         <!-- 👥 ABA USUÁRIOS -->
         <div id="admin-users-tab" class="admin-tab-content active">
           <div class="admin-users-header">
-            <div class="search-box">
-              <svg viewBox="0 0 24 24" fill="currentColor" class="search-icon"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-              <input type="text" id="admin-users-search" placeholder="Buscar usuário por nome ou e-mail..." />
+            <div class="admin-users-actions-row">
+              <div class="search-box">
+                <svg viewBox="0 0 24 24" fill="currentColor" class="search-icon"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="admin-users-search" placeholder="Buscar usuário por nome ou e-mail..." />
+              </div>
+              <button type="button" id="btn-admin-add-user" class="btn-primary btn-add-user-btn" title="Adicionar Novo Usuário">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                <span>Novo Usuário</span>
+              </button>
             </div>
             <div class="admin-filter-pills">
               <button class="admin-filter-pill active" data-filter="all">Todos</button>
@@ -662,6 +668,51 @@
         <button class="btn-secondary" data-modal="modal-admin-edit-user">Cancelar</button>
         <button id="btn-save-admin-edit-user" class="btn-primary">
           <span class="btn-text">Salvar Alterações</span>
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- MODAL: Adicionar Usuário (Admin)                -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div id="modal-admin-add-user" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="modal-admin-add-user-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modal-admin-add-user-title">Adicionar Novo Usuário</h2>
+        <button class="icon-btn modal-close" data-modal="modal-admin-add-user" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="admin-add-user-form">
+          <div class="form-group">
+            <label for="admin-add-user-name">Nome Completo</label>
+            <input type="text" id="admin-add-user-name" placeholder="Ex: Maria Silva" required />
+          </div>
+          <div class="form-group">
+            <label for="admin-add-user-email">E-mail</label>
+            <input type="email" id="admin-add-user-email" placeholder="usuario@email.com" required />
+          </div>
+          <div class="form-group">
+            <label for="admin-add-user-password">Senha Inicial</label>
+            <input type="password" id="admin-add-user-password" placeholder="Mínimo 6 caracteres" minlength="6" required />
+          </div>
+          <div class="form-group">
+            <label for="admin-add-user-role">Cargo (Role)</label>
+            <select id="admin-add-user-role" class="admin-select">
+              <option value="user" selected>Usuário Comum (user)</option>
+              <option value="admin">Administrador (admin)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="admin-add-user-approved">Status de Aprovação</label>
+            <select id="admin-add-user-approved" class="admin-select">
+              <option value="true" selected>Aprovado (Acesso Liberado)</option>
+              <option value="false">Pendente (Aguardando Aprovação)</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-admin-add-user">Cancelar</button>
+        <button id="btn-save-admin-add-user" class="btn-primary">
+          <span class="btn-text">Criar Usuário</span>
           <span class="btn-loader" hidden></span>
         </button>
       </div>

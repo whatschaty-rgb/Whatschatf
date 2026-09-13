@@ -1470,6 +1470,29 @@ textarea { resize: none; }
   margin-bottom: 8px;
 }
 
+.admin-users-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.admin-users-actions-row .search-box {
+  flex: 1;
+}
+
+.btn-add-user-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+}
+
 .admin-filter-pills {
   display: flex;
   gap: 6px;

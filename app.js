@@ -1324,6 +1324,75 @@ async function saveAdminEditUser() {
   showToast('Usuário atualizado com sucesso!', 'success');
 }
 
+function openAdminAddUserModal() {
+  if ($('#admin-add-user-name')) $('#admin-add-user-name').value = '';
+  if ($('#admin-add-user-email')) $('#admin-add-user-email').value = '';
+  if ($('#admin-add-user-password')) $('#admin-add-user-password').value = '';
+  if ($('#admin-add-user-role')) $('#admin-add-user-role').value = 'user';
+  if ($('#admin-add-user-approved')) $('#admin-add-user-approved').value = 'true';
+  openModal('modal-admin-add-user');
+}
+
+async function saveAdminAddUser() {
+  const name = $('#admin-add-user-name').value.trim();
+  const email = $('#admin-add-user-email').value.trim().toLowerCase();
+  const password = $('#admin-add-user-password').value;
+  const role = $('#admin-add-user-role').value;
+  const isApproved = $('#admin-add-user-approved').value === 'true';
+
+  if (!name) { showToast('Informe o nome completo do usuário', 'error'); return; }
+  if (!email || !email.includes('@')) { showToast('Informe um e-mail válido', 'error'); return; }
+  if (!password || password.length < 6) { showToast('A senha deve ter no mínimo 6 caracteres', 'error'); return; }
+
+  const btn = $('#btn-save-admin-add-user');
+  setButtonLoading(btn, true);
+
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: name }
+      }
+    });
+
+    if (authError) {
+      showToast('Erro ao cadastrar usuário: ' + (authError.message || ''), 'error');
+      setButtonLoading(btn, false);
+      return;
+    }
+
+    const userId = authData.user?.id || (Date.now().toString(36) + Math.random().toString(36).substring(2));
+    const profilePayload = {
+      id: userId,
+      email,
+      full_name: name,
+      status_msg: 'Disponível',
+      role,
+      is_approved: isApproved,
+      is_online: false,
+      last_seen: new Date().toISOString()
+    };
+
+    const { error: profError } = await supabase.from('profiles').upsert(profilePayload);
+    if (profError) {
+      console.warn('Aviso no perfil:', profError);
+    }
+
+    if (!state.adminUsers) state.adminUsers = [];
+    state.adminUsers = [profilePayload, ...state.adminUsers.filter(u => u.id !== userId)];
+    renderAdminUsers($('#admin-users-search')?.value.trim() || '');
+    
+    setButtonLoading(btn, false);
+    closeModal('modal-admin-add-user');
+    showToast(`Usuário "${name}" criado com sucesso!`, 'success');
+  } catch (err) {
+    console.error('Erro em saveAdminAddUser:', err);
+    setButtonLoading(btn, false);
+    showToast('Erro inesperado ao criar usuário', 'error');
+  }
+}
+
 async function toggleUserRole(u) {
   const newRole = u.role === 'admin' ? 'user' : 'admin';
   if (u.id === state.user?.id && newRole === 'user') {
@@ -2079,6 +2148,12 @@ function attachModalListeners() {
       renderAdminUsers($('#admin-users-search')?.value.trim() || '');
     });
   });
+
+  const addAdminUserBtn = $('#btn-admin-add-user');
+  if (addAdminUserBtn) addAdminUserBtn.addEventListener('click', openAdminAddUserModal);
+
+  const saveAdminAddBtn = $('#btn-save-admin-add-user');
+  if (saveAdminAddBtn) saveAdminAddBtn.addEventListener('click', saveAdminAddUser);
 
   const saveAdminEditBtn = $('#btn-save-admin-edit-user');
   if (saveAdminEditBtn) saveAdminEditBtn.addEventListener('click', saveAdminEditUser);
