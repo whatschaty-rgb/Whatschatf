@@ -262,6 +262,7 @@ textarea { resize: none; }
 
 .icon-btn svg { width: 22px; height: 22px; }
 .icon-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.icon-btn-danger:hover { background: rgba(239, 68, 68, 0.2) !important; color: var(--danger) !important; }
 
 /* ─── 3. APP LAYOUT ────────────────────────────────────── */
 .app {
@@ -456,6 +457,33 @@ textarea { resize: none; }
   justify-content: center;
   padding: 0 4px;
   flex-shrink: 0;
+}
+
+.conv-item-delete {
+  opacity: 0;
+  transition: opacity var(--transition);
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.conv-item:hover .conv-item-delete {
+  opacity: 1;
+}
+
+.conv-item-delete:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.2);
+}
+
+@media (max-width: 767px) {
+  .conv-item-delete {
+    opacity: 0.8;
+  }
 }
 
 /* Search result item */

@@ -161,8 +161,17 @@ CREATE POLICY "conversations_insert"
 CREATE POLICY "conversations_update"
   ON public.conversations FOR UPDATE
   TO authenticated
-  USING (created_by = auth.uid())
-  WITH CHECK (created_by = auth.uid());
+  USING (created_by = auth.uid() OR public.is_conversation_participant(id, auth.uid()))
+  WITH CHECK (created_by = auth.uid() OR public.is_conversation_participant(id, auth.uid()));
+
+CREATE POLICY "conversations_delete"
+  ON public.conversations FOR DELETE
+  TO authenticated
+  USING (
+    created_by = auth.uid()
+    OR
+    public.is_conversation_participant(id, auth.uid())
+  );
 
 -- participants
 CREATE POLICY "participants_select"

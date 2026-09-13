@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -167,8 +167,11 @@
             </div>
           </div>
           <div class="chat-header-actions">
-            <button class="icon-btn" title="Pesquisar" aria-label="Pesquisar mensagem">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <button id="btn-edit-group" class="icon-btn" title="Editar Grupo" aria-label="Editar grupo" hidden>
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            </button>
+            <button id="btn-delete-chat" class="icon-btn icon-btn-danger" title="Excluir Chat" aria-label="Excluir conversa">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             </button>
           </div>
         </header>
@@ -354,6 +357,40 @@
       <div class="modal-footer">
         <button class="btn-secondary" data-modal="modal-profile">Cancelar</button>
         <button id="btn-save-profile" class="btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- MODAL: Editar Grupo                            -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div id="modal-edit-group" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="modal-edit-group-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modal-edit-group-title">Editar Grupo</h2>
+        <button class="icon-btn modal-close" data-modal="modal-edit-group" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="group-avatar-picker">
+          <img id="edit-group-avatar-preview" src="" alt="Avatar do grupo" class="avatar avatar-lg" />
+          <label for="edit-group-avatar-input" class="btn-change-avatar" title="Mudar foto do grupo">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
+          </label>
+          <input type="file" id="edit-group-avatar-input" accept="image/*" hidden />
+        </div>
+        <div class="form-group">
+          <label for="edit-group-name-input">Nome do Grupo</label>
+          <input type="text" id="edit-group-name-input" placeholder="Nome do grupo" required />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-edit-group">Cancelar</button>
+        <button id="btn-save-group-edit" class="btn-primary">
+          <span class="btn-text">Salvar Alterações</span>
+          <span class="btn-loader" hidden></span>
+        </button>
       </div>
     </div>
   </div>

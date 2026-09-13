@@ -23,6 +23,7 @@ const state = {
   pendingMedia: null,
   pendingGroupAvatar: null,
   pendingProfileAvatar: null,
+  pendingGroupEditAvatar: null,
   selectedParticipants: [],
   cameraStream: null,
   cameraFacing: 'user',
@@ -214,6 +215,29 @@ function setButtonLoading(btn, loading) {
   if (loader) { loading ? loader.removeAttribute('hidden') : loader.setAttribute('hidden',''); }
 }
 
+function clearAppState() {
+  teardownRealtime();
+  state.user = null;
+  state.profile = null;
+  state.conversations = [];
+  state.activeConversation = null;
+  state.messages = [];
+  state.participants = {};
+  state.unreadCounts = {};
+
+  const list = $('#conversation-list');
+  if (list) list.innerHTML = '';
+  const msgList = $('#messages-list');
+  if (msgList) msgList.innerHTML = '';
+
+  hide('#chat-window');
+  show('#chat-welcome');
+  closeModal('modal-new-group');
+  closeModal('modal-profile');
+  closeModal('modal-camera');
+  closeModal('modal-edit-group');
+}
+
 // INIT
 async function init() {
   buildEmojiPicker();
@@ -224,27 +248,35 @@ async function init() {
   attachVirtualKeyboardFix();
 
   supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_OUT' || !session?.user) {
+      clearAppState();
+      showAuthScreen();
+      return;
+    }
+
     if (session?.user) {
+      if (state.user && state.user.id !== session.user.id) {
+        clearAppState();
+      }
       state.user = session.user;
       await loadProfile();
       showApp();
       await loadConversations();
       setupPresence();
-    } else {
-      state.user = null;
-      state.profile = null;
-      showAuthScreen();
     }
   });
 
   const user = await getCurrentUser();
-  if (!user) showAuthScreen();
+  if (!user) {
+    clearAppState();
+    showAuthScreen();
+  }
 }
 
 function showAuthScreen() {
   hide('#app');
   show('#auth-screen');
-  teardownRealtime();
+  clearAppState();
 }
 
 function showApp() {
@@ -288,6 +320,7 @@ function updateSidebarAvatar() {
 
 // CONVERSATIONS
 async function loadConversations() {
+  if (!state.user) return;
   // Load cached conversations for instantaneous UI render
   const cached = getLocalCache(`conversations_${state.user.id}`);
   if (cached && Array.isArray(cached) && cached.length) {
@@ -306,7 +339,9 @@ async function loadConversations() {
   const { data: parts, error: partErr } = await supabase
     .from('participants').select('conversation_id').eq('user_id', state.user.id);
   if (partErr || !parts?.length) {
-    if (!state.conversations.length) renderConvListEmpty();
+    state.conversations = [];
+    removeLocalCache(`conversations_${state.user.id}`);
+    renderConvListEmpty();
     return;
   }
 
@@ -314,7 +349,9 @@ async function loadConversations() {
   const { data: convs, error: convErr } = await supabase
     .from('conversations').select('*').in('id', convIds).order('created_at', { ascending: false });
   if (convErr || !convs?.length) {
-    if (!state.conversations.length) renderConvListEmpty();
+    state.conversations = [];
+    removeLocalCache(`conversations_${state.user.id}`);
+    renderConvListEmpty();
     return;
   }
 
@@ -388,7 +425,7 @@ function buildConvItem(conv) {
   let previewText = 'Clique para abrir';
   if (lastMsg) {
     if (lastMsg.media_type === 'image') previewText = 'Foto';
-    else if (lastMsg.media_type === 'audio') previewText = 'Audio';
+    else if (lastMsg.media_type === 'audio') previewText = 'Áudio';
     else previewText = lastMsg.content || '';
   }
   const onlineOther = !conv.is_group && conv.otherUser?.is_online;
@@ -408,8 +445,19 @@ function buildConvItem(conv) {
         <span class="conv-item-preview">${escapeHtml(previewText)}</span>
         ${unread > 0 ? `<span class="conv-item-badge">${unread}</span>` : ''}
       </div>
-    </div>`;
+    </div>
+    <button class="conv-item-delete" title="Excluir conversa" aria-label="Excluir conversa">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+    </button>`;
+  
   item.addEventListener('click', () => openConversation(conv));
+  const deleteBtn = item.querySelector('.conv-item-delete');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteConversation(conv);
+    });
+  }
   return item;
 }
 
@@ -458,6 +506,13 @@ function closeMobileChat(fromPopState = false) {
 function updateChatHeader(conv) {
   $('#chat-avatar').src = conv.displayAvatar;
   $('#chat-name').textContent = conv.displayName;
+
+  const editBtn = $('#btn-edit-group');
+  if (editBtn) {
+    if (conv.is_group) show(editBtn);
+    else hide(editBtn);
+  }
+
   if (conv.is_group) {
     const count = conv.participants?.length || 0;
     $('#chat-status').textContent = `${count} participante${count !== 1 ? 's' : ''}`;
@@ -922,6 +977,124 @@ async function createGroup() {
   resetGroupModal();
   showToast(`Grupo "${name}" criado!`, 'success');
 }
+
+// DELETE CONVERSATION
+async function deleteConversation(conv) {
+  if (!conv || !state.user) return;
+  const isCreator = conv.created_by === state.user.id || !conv.is_group;
+  const confirmMsg = isCreator
+    ? `Deseja excluir permanentemente a conversa "${conv.displayName}"? Todas as mensagens serão apagadas.`
+    : `Deseja sair e remover o grupo "${conv.displayName}" da sua lista?`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    if (isCreator) {
+      const { error } = await supabase.from('conversations').delete().eq('id', conv.id);
+      if (error) {
+        const { error: partErr } = await supabase.from('participants')
+          .delete()
+          .eq('conversation_id', conv.id)
+          .eq('user_id', state.user.id);
+        if (partErr) throw partErr;
+      }
+    } else {
+      const { error } = await supabase.from('participants')
+        .delete()
+        .eq('conversation_id', conv.id)
+        .eq('user_id', state.user.id);
+      if (error) throw error;
+    }
+
+    state.conversations = state.conversations.filter(c => c.id !== conv.id);
+    delete state.unreadCounts[conv.id];
+    removeLocalCache(`messages_${conv.id}`);
+    removeLocalCache(`draft_${conv.id}`);
+    setLocalCache(`conversations_${state.user.id}`, state.conversations);
+
+    if (state.activeConversation?.id === conv.id) {
+      state.activeConversation = null;
+      hide('#chat-window');
+      show('#chat-welcome');
+      if (window.innerWidth < 768) closeMobileChat(true);
+    }
+
+    renderConversationList();
+    showToast('Conversa excluída com sucesso!', 'success');
+  } catch (err) {
+    console.error('Erro ao excluir conversa:', err);
+    showToast('Erro ao excluir conversa: ' + (err.message || ''), 'error');
+  }
+}
+
+// EDIT GROUP
+function openEditGroupModal() {
+  const conv = state.activeConversation;
+  if (!conv || !conv.is_group) return;
+
+  $('#edit-group-name-input').value = conv.name || conv.displayName || '';
+  $('#edit-group-avatar-preview').src = conv.displayAvatar;
+  state.pendingGroupEditAvatar = null;
+  const fileInput = $('#edit-group-avatar-input');
+  if (fileInput) fileInput.value = '';
+  openModal('modal-edit-group');
+}
+
+async function saveGroupEdit() {
+  const conv = state.activeConversation;
+  if (!conv || !conv.is_group) return;
+
+  const name = $('#edit-group-name-input').value.trim();
+  if (!name) { showToast('Informe o nome do grupo', 'error'); return; }
+
+  const btn = $('#btn-save-group-edit');
+  setButtonLoading(btn, true);
+
+  let avatarUrl = conv.avatar_url;
+  if (state.pendingGroupEditAvatar) {
+    try {
+      const path = `groups/${conv.id}/${Date.now()}.jpg`;
+      const stored = await uploadFile('chat-media', path, state.pendingGroupEditAvatar, 'image/jpeg');
+      avatarUrl = await getSignedUrl(stored);
+    } catch (e) {
+      console.warn('Erro ao fazer upload do avatar do grupo:', e);
+    }
+  }
+
+  const { error } = await supabase.from('conversations')
+    .update({ name, avatar_url: avatarUrl })
+    .eq('id', conv.id);
+
+  setButtonLoading(btn, false);
+  if (error) {
+    showToast('Erro ao salvar alterações do grupo: ' + error.message, 'error');
+    return;
+  }
+
+  conv.name = name;
+  conv.displayName = name;
+  if (avatarUrl) {
+    conv.avatar_url = avatarUrl;
+    conv.displayAvatar = avatarUrl;
+  }
+
+  const convInList = state.conversations.find(c => c.id === conv.id);
+  if (convInList) {
+    convInList.name = name;
+    convInList.displayName = name;
+    if (avatarUrl) {
+      convInList.avatar_url = avatarUrl;
+      convInList.displayAvatar = avatarUrl;
+    }
+  }
+
+  setLocalCache(`conversations_${state.user.id}`, state.conversations);
+  updateChatHeader(conv);
+  renderConversationList();
+  closeModal('modal-edit-group');
+  showToast('Grupo atualizado com sucesso!', 'success');
+}
+
 
 function resetGroupModal() {
   $('#group-name-input').value = '';
@@ -1409,11 +1582,29 @@ function attachModalListeners() {
       removeLocalCache(`active_conv_${state.user.id}`);
       await supabase.from('profiles').update({ is_online: false }).eq('id', state.user.id);
     }
+    clearAppState();
     await supabase.auth.signOut();
+    showAuthScreen();
   });
 
   $('#btn-profile').addEventListener('click', openProfileModal);
   $('#btn-save-profile').addEventListener('click', saveProfile);
+
+  $('#btn-edit-group').addEventListener('click', openEditGroupModal);
+  $('#btn-save-group-edit').addEventListener('click', saveGroupEdit);
+
+  $('#edit-group-avatar-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    state.pendingGroupEditAvatar = file;
+    $('#edit-group-avatar-preview').src = URL.createObjectURL(file);
+  });
+
+  $('#btn-delete-chat').addEventListener('click', () => {
+    if (state.activeConversation) {
+      deleteConversation(state.activeConversation);
+    }
+  });
 
   $('#profile-avatar-input').addEventListener('change', e => {
     const file = e.target.files[0];
