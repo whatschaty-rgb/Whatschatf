@@ -1406,6 +1406,11 @@ textarea { resize: none; }
   width: 95%;
 }
 
+#modal-admin-add-user,
+#modal-admin-edit-user {
+  z-index: 1100;
+}
+
 .admin-modal-title {
   display: flex;
   align-items: center;

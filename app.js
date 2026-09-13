@@ -1324,16 +1324,20 @@ async function saveAdminEditUser() {
   showToast('Usuário atualizado com sucesso!', 'success');
 }
 
-function openAdminAddUserModal() {
+window._openAdminAddUserModal = function() {
   if ($('#admin-add-user-name')) $('#admin-add-user-name').value = '';
   if ($('#admin-add-user-email')) $('#admin-add-user-email').value = '';
   if ($('#admin-add-user-password')) $('#admin-add-user-password').value = '';
   if ($('#admin-add-user-role')) $('#admin-add-user-role').value = 'user';
   if ($('#admin-add-user-approved')) $('#admin-add-user-approved').value = 'true';
   openModal('modal-admin-add-user');
+};
+
+function openAdminAddUserModal() {
+  window._openAdminAddUserModal();
 }
 
-async function saveAdminAddUser() {
+window._saveAdminAddUser = async function() {
   const name = $('#admin-add-user-name').value.trim();
   const email = $('#admin-add-user-email').value.trim().toLowerCase();
   const password = $('#admin-add-user-password').value;
@@ -1389,6 +1393,10 @@ async function saveAdminAddUser() {
     setButtonLoading(btn, false);
     showToast('Erro ao criar usuário: ' + (err.message || ''), 'error');
   }
+};
+
+async function saveAdminAddUser() {
+  return window._saveAdminAddUser();
 }
 
 async function toggleUserRole(u) {
