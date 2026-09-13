@@ -389,6 +389,36 @@
           </div>
         </div>
 
+        <!-- Papel de Parede do Chat -->
+        <div class="form-group theme-group">
+          <label>Fundo da Tela de Conversa</label>
+          <div class="wallpaper-options">
+            <div class="wallpaper-picker-row">
+              <label for="wallpaper-upload-input" class="btn-secondary btn-sm btn-upload-wallpaper">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-3.86 2.14 2.57 3-3.86L17 19H5z"/></svg>
+                Enviar Imagem de Fundo
+              </label>
+              <input type="file" id="wallpaper-upload-input" accept="image/*" hidden />
+              <button type="button" id="btn-remove-wallpaper" class="btn-secondary btn-sm btn-remove-wallpaper" hidden>Remover Imagem</button>
+            </div>
+            <div id="wallpaper-image-preview" class="wallpaper-image-preview" hidden>
+              <img id="wallpaper-img-src" src="" alt="Fundo personalizado" />
+              <span>Imagem personalizada ativa</span>
+            </div>
+
+            <div class="wallpaper-swatches">
+              <button type="button" class="bg-swatch active" data-bg="default" style="background: #111b21;" title="Padrão WhatsApp"></button>
+              <button type="button" class="bg-swatch" data-bg="slate" style="background: #0b141a;" title="Escuro Clássico"></button>
+              <button type="button" class="bg-swatch" data-bg="black" style="background: #000000;" title="Preto Puro OLED"></button>
+              <button type="button" class="bg-swatch" data-bg="navy" style="background: #0a192f;" title="Azul Noturno"></button>
+              <button type="button" class="bg-swatch" data-bg="plum" style="background: #1a0f1a;" title="Ameixa Escuro"></button>
+              <button type="button" class="bg-swatch" data-bg="forest" style="background: #0a1f18;" title="Verde Escuro"></button>
+              <button type="button" class="bg-swatch" data-bg="beige" style="background: #e5ddd5;" title="Bege Quente"></button>
+              <button type="button" class="bg-swatch" data-bg="softgrey" style="background: #d1d7db;" title="Cinza Suave"></button>
+            </div>
+          </div>
+        </div>
+
         <p id="profile-email-display" class="profile-email"></p>
       </div>
       <div class="modal-footer">

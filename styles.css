@@ -795,12 +795,35 @@ textarea { resize: none; }
 
 .msg.out .msg-bubble {
   background: var(--bg-msg-out);
+  color: #ffffff !important;
   border-bottom-right-radius: 2px;
+}
+
+.msg.out .msg-bubble * {
+  color: #ffffff;
+}
+
+.msg.out .msg-time {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.msg.out .tick.sent svg {
+  fill: rgba(255, 255, 255, 0.78) !important;
+}
+
+.msg.out .tick.read svg {
+  fill: #53bdeb !important;
 }
 
 .msg.in .msg-bubble {
   background: var(--bg-msg-in);
+  color: var(--text-primary);
   border-bottom-left-radius: 2px;
+}
+
+[data-theme-mode="light"] .msg.in .msg-bubble {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  border: 1px solid rgba(0,0,0,0.08);
 }
 
 .msg-sender {
@@ -821,7 +844,43 @@ textarea { resize: none; }
 
 .msg-time {
   font-size: 0.68rem;
-  color: rgba(233,237,239,.6);
+  color: rgba(233,237,239,.7);
+}
+
+/* ─── PAPÉIS DE PAREDE DO CHAT (CHAT WALLPAPERS) ────────── */
+[data-chat-bg="slate"] .messages-container {
+  background-color: #0b141a !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="black"] .messages-container {
+  background-color: #000000 !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="navy"] .messages-container {
+  background-color: #0a192f !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="plum"] .messages-container {
+  background-color: #1a0f1a !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="forest"] .messages-container {
+  background-color: #0a1f18 !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="beige"] .messages-container {
+  background-color: #e5ddd5 !important;
+  background-image: none !important;
+}
+
+[data-chat-bg="softgrey"] .messages-container {
+  background-color: #d1d7db !important;
+  background-image: none !important;
 }
 
 /* Ticks (read receipts) */
@@ -1791,6 +1850,97 @@ input:checked + .slider:before {
   inset: 3px;
   border-radius: 50%;
   border: 2px solid #ffffff;
+}
+
+/* Chat Wallpaper Options */
+.wallpaper-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wallpaper-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.wallpaper-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--bg-primary);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.wallpaper-image-preview img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.wallpaper-image-preview span {
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.wallpaper-swatches {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.bg-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform var(--transition), border-color var(--transition);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.bg-swatch:hover {
+  transform: scale(1.15);
+}
+
+.bg-swatch.active {
+  border-color: var(--text-primary);
+  transform: scale(1.15);
+}
+
+.bg-swatch.active::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
 
 /* ─── 8. TOAST ─────────────────────────────────────────── */

@@ -11,6 +11,8 @@ const state = {
   profile: null,
   themeMode: 'dark',
   themeColor: 'green',
+  chatBg: 'default',
+  customWallpaper: null,
   conversations: [],
   activeConversation: null,
   messages: [],
@@ -247,6 +249,7 @@ function clearAppState() {
 // INIT
 async function init() {
   initTheme();
+  initWallpaper();
   buildEmojiPicker();
   attachAuthListeners();
   attachModalListeners();
@@ -502,6 +505,7 @@ async function openConversation(conv) {
   updateChatHeader(conv);
   hide('#chat-welcome');
   show('#chat-window');
+  applyWallpaper(state.chatBg, state.customWallpaper);
   $$('.conv-item').forEach(el => el.classList.toggle('active', el.dataset.id === conv.id));
 
   // Restore draft for this conversation
@@ -1775,6 +1779,82 @@ function initTheme() {
   });
 }
 
+// WALLPAPER MANAGEMENT
+function applyWallpaper(bgPreset = 'default', customImgUrl = null) {
+  state.chatBg = bgPreset;
+  state.customWallpaper = customImgUrl;
+
+  document.documentElement.setAttribute('data-chat-bg', bgPreset);
+  setLocalCache('chat_bg', bgPreset);
+
+  const container = $('.messages-container');
+  const previewBox = $('#wallpaper-image-preview');
+  const previewImg = $('#wallpaper-img-src');
+  const removeBtn = $('#btn-remove-wallpaper');
+
+  if (customImgUrl) {
+    setLocalCache('custom_wallpaper', customImgUrl);
+    if (container) {
+      container.style.backgroundImage = `url("${customImgUrl}")`;
+      container.style.backgroundSize = 'cover';
+      container.style.backgroundPosition = 'center';
+      container.style.backgroundRepeat = 'no-repeat';
+    }
+    if (previewImg) previewImg.src = customImgUrl;
+    if (previewBox) show(previewBox);
+    if (removeBtn) show(removeBtn);
+  } else {
+    removeLocalCache('custom_wallpaper');
+    if (container) {
+      container.style.backgroundImage = '';
+      container.style.backgroundSize = '';
+      container.style.backgroundPosition = '';
+      container.style.backgroundRepeat = '';
+    }
+    if (previewBox) hide(previewBox);
+    if (removeBtn) hide(removeBtn);
+  }
+
+  $$('.bg-swatch').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.bg === bgPreset);
+  });
+}
+
+function initWallpaper() {
+  const savedBg = getLocalCache('chat_bg') || 'default';
+  const savedCustom = getLocalCache('custom_wallpaper') || null;
+  applyWallpaper(savedBg, savedCustom);
+
+  $$('.bg-swatch').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyWallpaper(btn.dataset.bg, state.customWallpaper);
+    });
+  });
+
+  const uploadInput = $('#wallpaper-upload-input');
+  if (uploadInput) {
+    uploadInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        applyWallpaper(state.chatBg, ev.target.result);
+        showToast('Papel de parede aplicado!', 'success');
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+  }
+
+  const removeBtn = $('#btn-remove-wallpaper');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', () => {
+      applyWallpaper('default', null);
+      showToast('Imagem de fundo removida', 'success');
+    });
+  }
+}
+
 // PROFILE MODAL
 async function openProfileModal() {
   $('#profile-name').value = state.profile?.full_name || '';
@@ -1782,8 +1862,9 @@ async function openProfileModal() {
   $('#profile-email-display').textContent = state.profile?.email || '';
   $('#profile-avatar-preview').src = avatarSrc(state.profile);
 
-  // Sync theme active buttons
+  // Sync theme & wallpaper active controls
   applyTheme(state.themeMode, state.themeColor);
+  applyWallpaper(state.chatBg, state.customWallpaper);
 
   openModal('modal-profile');
 }
