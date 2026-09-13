@@ -1257,7 +1257,44 @@ textarea { resize: none; }
 
 /* Admin Users List */
 .admin-users-header {
-  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.admin-filter-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-filter-pill {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.admin-filter-pill:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.08);
+}
+
+.admin-filter-pill.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.admin-filter-pill.pill-warning.active {
+  background: var(--warning);
+  color: #000;
+  border-color: var(--warning);
 }
 
 .admin-users-list {
@@ -1317,14 +1354,14 @@ textarea { resize: none; }
 .admin-user-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .role-badge {
-  padding: 3px 10px;
+  padding: 3px 8px;
   border-radius: var(--radius-full);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1340,6 +1377,81 @@ textarea { resize: none; }
   background: rgba(134, 150, 160, 0.15);
   color: var(--text-secondary);
   border: 1px solid rgba(134, 150, 160, 0.3);
+}
+
+.status-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-badge.approved {
+  background: rgba(6, 207, 156, 0.15);
+  color: #06cf9c;
+  border: 1px solid rgba(6, 207, 156, 0.3);
+}
+
+.status-badge.pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.btn-user-approve {
+  background: rgba(0, 168, 132, 0.2);
+  color: var(--accent-hover);
+  border: 1px solid rgba(0, 168, 132, 0.4);
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition);
+}
+
+.btn-user-approve:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-user-edit {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+
+.btn-user-edit:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: var(--accent);
+}
+
+.admin-select {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.admin-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .btn-role-toggle {

@@ -437,6 +437,11 @@
               <svg viewBox="0 0 24 24" fill="currentColor" class="search-icon"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
               <input type="text" id="admin-users-search" placeholder="Buscar usuário por nome ou e-mail..." />
             </div>
+            <div class="admin-filter-pills">
+              <button class="admin-filter-pill active" data-filter="all">Todos</button>
+              <button class="admin-filter-pill pill-warning" data-filter="pending">Pendentes (<span id="admin-pending-badge">0</span>)</button>
+              <button class="admin-filter-pill" data-filter="approved">Aprovados</button>
+            </div>
           </div>
           <div id="admin-users-list" class="admin-users-list">
             <!-- Renderizado via JS -->
@@ -529,6 +534,58 @@
             <button type="submit" id="btn-save-admin-permissions" class="btn-primary">Salvar Permissões</button>
           </form>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- MODAL: Editar Usuário (Admin)                  -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div id="modal-admin-edit-user" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="modal-admin-edit-user-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modal-admin-edit-user-title">Editar Usuário</h2>
+        <button class="icon-btn modal-close" data-modal="modal-admin-edit-user" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="group-avatar-picker">
+          <img id="admin-edit-user-avatar" src="" alt="Avatar" class="avatar avatar-lg" />
+        </div>
+        <div class="form-group">
+          <label for="admin-edit-user-email">E-mail</label>
+          <input type="email" id="admin-edit-user-email" readonly disabled style="opacity: 0.7;" />
+        </div>
+        <div class="form-group">
+          <label for="admin-edit-user-name">Nome de Exibição</label>
+          <input type="text" id="admin-edit-user-name" placeholder="Nome do usuário" required />
+        </div>
+        <div class="form-group">
+          <label for="admin-edit-user-status">Recado</label>
+          <input type="text" id="admin-edit-user-status" placeholder="Status do usuário" />
+        </div>
+        <div class="form-group">
+          <label for="admin-edit-user-role">Cargo (Role)</label>
+          <select id="admin-edit-user-role" class="admin-select">
+            <option value="user">Usuário (User)</option>
+            <option value="admin">Administrador (Admin)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="admin-edit-user-approved">Status de Aprovação</label>
+          <select id="admin-edit-user-approved" class="admin-select">
+            <option value="true">Aprovado (Acesso liberado)</option>
+            <option value="false">Pendente / Bloqueado</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-modal="modal-admin-edit-user">Cancelar</button>
+        <button id="btn-save-admin-edit-user" class="btn-primary">
+          <span class="btn-text">Salvar Alterações</span>
+          <span class="btn-loader" hidden></span>
+        </button>
       </div>
     </div>
   </div>

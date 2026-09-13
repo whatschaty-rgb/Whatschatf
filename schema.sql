@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_url  TEXT,
   status_msg  TEXT        NOT NULL DEFAULT 'Disponivel',
   role        TEXT        NOT NULL DEFAULT 'user',
+  is_approved BOOLEAN     NOT NULL DEFAULT TRUE,
   is_online   BOOLEAN     NOT NULL DEFAULT FALSE,
   last_seen   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -63,7 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON public.messages(conversa
 CREATE INDEX IF NOT EXISTS idx_participants_user     ON public.participants(user_id);
 CREATE INDEX IF NOT EXISTS idx_participants_conv     ON public.participants(conversation_id);
 
--- 5. TRIGGER: criar profile automatico ao signup
+-- 5. TRIGGER: criar profile automatico ao signup (novos usuarios entram pendentes de aprovacao)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -71,11 +72,13 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name)
+  INSERT INTO public.profiles (id, email, full_name, role, is_approved)
   VALUES (
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1))
+    COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
+    'user',
+    FALSE
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;

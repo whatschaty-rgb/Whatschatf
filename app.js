@@ -264,6 +264,15 @@ async function init() {
       }
       state.user = session.user;
       await loadProfile();
+
+      // Bloquear usuários não aprovados (exceto admins)
+      if (state.profile?.is_approved === false && state.profile?.role !== 'admin') {
+        showAuthError('login-error', 'Sua conta foi criada e está aguardando a aprovação de um administrador.');
+        showToast('Sua conta está aguardando aprovação do administrador', 'error', 6000);
+        showAuthScreen();
+        return;
+      }
+
       showApp();
       await loadConversations();
       setupPresence();
@@ -1136,12 +1145,29 @@ async function loadAdminUsers() {
   renderAdminUsers($('#admin-users-search')?.value.trim() || '');
 }
 
+state.adminUserFilter = 'all';
+state.editingUser = null;
+
 function renderAdminUsers(query = '') {
   const container = $('#admin-users-list');
   if (!container) return;
   container.innerHTML = '';
 
   let users = state.adminUsers || [];
+
+  // Atualizar badge de pendentes
+  const pendingCount = users.filter(u => u.is_approved === false && u.role !== 'admin').length;
+  const badgeEl = $('#admin-pending-badge');
+  if (badgeEl) badgeEl.textContent = pendingCount;
+
+  // Filtrar por aba de status
+  if (state.adminUserFilter === 'pending') {
+    users = users.filter(u => u.is_approved === false && u.role !== 'admin');
+  } else if (state.adminUserFilter === 'approved') {
+    users = users.filter(u => u.is_approved !== false || u.role === 'admin');
+  }
+
+  // Filtrar por busca de texto
   if (query) {
     const q = query.toLowerCase();
     users = users.filter(u =>
@@ -1151,13 +1177,15 @@ function renderAdminUsers(query = '') {
   }
 
   if (!users.length) {
-    container.innerHTML = `<div style="padding: 16px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Nenhum usuário encontrado.</div>`;
+    container.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Nenhum usuário encontrado neste filtro.</div>`;
     return;
   }
 
   users.forEach(u => {
     const isSelf = u.id === state.user?.id;
     const role = u.role || 'user';
+    const isApproved = u.is_approved !== false || role === 'admin';
+
     const item = createEl('div', { className: 'admin-user-item' });
     item.innerHTML = `
       <div class="admin-user-info">
@@ -1169,18 +1197,85 @@ function renderAdminUsers(query = '') {
       </div>
       <div class="admin-user-actions">
         <span class="role-badge ${role}">${role}</span>
-        <button class="btn-role-toggle" data-user-id="${u.id}">${role === 'admin' ? 'Tornar Usuário' : 'Tornar Admin'}</button>
+        <span class="status-badge ${isApproved ? 'approved' : 'pending'}">${isApproved ? 'Aprovado' : 'Pendente'}</span>
+        ${!isApproved ? `<button class="btn-user-approve" data-user-id="${u.id}" title="Aprovar Usuário"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Aceitar</button>` : ''}
+        <button class="btn-user-edit" data-user-id="${u.id}" title="Editar Usuário"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
         ${!isSelf ? `<button class="btn-user-delete" data-user-id="${u.id}" title="Excluir Usuário"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` : ''}
       </div>
     `;
 
-    item.querySelector('.btn-role-toggle').addEventListener('click', () => toggleUserRole(u));
+    const approveBtn = item.querySelector('.btn-user-approve');
+    if (approveBtn) approveBtn.addEventListener('click', () => approveUser(u));
+
+    const editBtn = item.querySelector('.btn-user-edit');
+    if (editBtn) editBtn.addEventListener('click', () => openAdminEditUserModal(u));
+
     const delBtn = item.querySelector('.btn-user-delete');
-    if (delBtn) {
-      delBtn.addEventListener('click', () => deleteAdminUser(u));
-    }
+    if (delBtn) delBtn.addEventListener('click', () => deleteAdminUser(u));
+
     container.append(item);
   });
+}
+
+async function approveUser(u) {
+  const { error } = await supabase.from('profiles').update({ is_approved: true }).eq('id', u.id);
+  if (error) {
+    showToast('Erro ao aprovar usuário: ' + error.message, 'error');
+    return;
+  }
+  u.is_approved = true;
+  renderAdminUsers($('#admin-users-search')?.value.trim() || '');
+  showToast(`Usuário "${u.full_name || u.email}" aprovado com sucesso!`, 'success');
+}
+
+function openAdminEditUserModal(u) {
+  state.editingUser = u;
+  $('#admin-edit-user-avatar').src = avatarSrc(u);
+  $('#admin-edit-user-email').value = u.email || '';
+  $('#admin-edit-user-name').value = u.full_name || '';
+  $('#admin-edit-user-status').value = u.status_msg || 'Disponível';
+  $('#admin-edit-user-role').value = u.role || 'user';
+  $('#admin-edit-user-approved').value = (u.is_approved !== false || u.role === 'admin') ? 'true' : 'false';
+  openModal('modal-admin-edit-user');
+}
+
+async function saveAdminEditUser() {
+  const u = state.editingUser;
+  if (!u) return;
+
+  const name = $('#admin-edit-user-name').value.trim();
+  const statusMsg = $('#admin-edit-user-status').value.trim();
+  const role = $('#admin-edit-user-role').value;
+  const isApproved = $('#admin-edit-user-approved').value === 'true';
+
+  if (!name) { showToast('Informe o nome de exibição', 'error'); return; }
+
+  const btn = $('#btn-save-admin-edit-user');
+  setButtonLoading(btn, true);
+
+  const { error } = await supabase.from('profiles')
+    .update({ full_name: name, status_msg: statusMsg, role, is_approved: isApproved })
+    .eq('id', u.id);
+
+  setButtonLoading(btn, false);
+  if (error) {
+    showToast('Erro ao salvar usuário: ' + error.message, 'error');
+    return;
+  }
+
+  u.full_name = name;
+  u.status_msg = statusMsg;
+  u.role = role;
+  u.is_approved = isApproved;
+
+  if (u.id === state.user?.id) {
+    state.profile = { ...state.profile, full_name: name, status_msg: statusMsg, role, is_approved: isApproved };
+    updateSidebarAvatar();
+  }
+
+  renderAdminUsers($('#admin-users-search')?.value.trim() || '');
+  closeModal('modal-admin-edit-user');
+  showToast('Usuário atualizado com sucesso!', 'success');
 }
 
 async function toggleUserRole(u) {
@@ -1805,12 +1900,17 @@ function attachModalListeners() {
     });
   });
 
-  const adminSearch = $('#admin-users-search');
-  if (adminSearch) {
-    adminSearch.addEventListener('input', e => {
-      renderAdminUsers(e.target.value.trim());
+  $$('.admin-filter-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      $$('.admin-filter-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.adminUserFilter = pill.dataset.filter || 'all';
+      renderAdminUsers($('#admin-users-search')?.value.trim() || '');
     });
-  }
+  });
+
+  const saveAdminEditBtn = $('#btn-save-admin-edit-user');
+  if (saveAdminEditBtn) saveAdminEditBtn.addEventListener('click', saveAdminEditUser);
 
   const settingsForm = $('#admin-settings-form');
   if (settingsForm) settingsForm.addEventListener('submit', saveAdminSettings);
