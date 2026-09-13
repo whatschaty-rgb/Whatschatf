@@ -47,19 +47,21 @@
   --transition:      0.2s ease;
 }
 
-html {
-  font-size: var(--font-size-base);
-  -webkit-tap-highlight-color: transparent;
-  height: 100%;
-}
-
-body {
+html, body {
   font-family: var(--font);
   background: var(--bg-primary);
   color: var(--text-primary);
   height: 100%;
+  height: 100dvh;
+  width: 100%;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
+  position: fixed;
+  inset: 0;
   line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -268,8 +270,14 @@ textarea { resize: none; }
 .app {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
+  height: 100%;
   height: 100dvh;
+  width: 100%;
+  width: 100vw;
+  position: fixed;
+  inset: 0;
   overflow: hidden;
+  background: var(--bg-primary);
 }
 
 /* ─── 4. SIDEBAR ───────────────────────────────────────── */
@@ -1284,20 +1292,16 @@ textarea { resize: none; }
 }
 
 /* ─── 10. RESPONSIVE MEDIA QUERIES ────────────────────────── */
-/* Tablets (768px - 1024px) */
-@media (min-width: 768px) and (max-width: 1024px) {
-  :root {
-    --sidebar-width: 310px;
-  }
-}
-
-/* Mobile Screens (< 767px) */
-@media (max-width: 767px) {
+/* Mobile & Tablet Screens (<= 960px) */
+@media (max-width: 960px) {
   .app {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
-    position: relative;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
     height: 100dvh;
+    height: 100%;
   }
 
   .sidebar {
@@ -1307,6 +1311,7 @@ textarea { resize: none; }
     transform: translateX(0);
     transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1);
     width: 100%;
+    height: 100%;
   }
 
   .sidebar.slide-out {
@@ -1320,6 +1325,7 @@ textarea { resize: none; }
     transform: translateX(100%);
     transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1);
     width: 100%;
+    height: 100%;
   }
 
   .chat-area.slide-in {
@@ -1412,14 +1418,15 @@ textarea { resize: none; }
   }
 }
 
-/* Desktop & Large Tablet (> 768px) */
-@media (min-width: 768px) {
+/* Desktop (> 960px) */
+@media (min-width: 961px) {
   .sidebar {
     position: relative !important;
     inset: auto !important;
     transform: none !important;
     width: auto !important;
     z-index: auto !important;
+    height: 100% !important;
   }
 
   .chat-area {
@@ -1427,6 +1434,7 @@ textarea { resize: none; }
     inset: auto !important;
     transform: none !important;
     z-index: auto !important;
+    height: 100% !important;
   }
 
   .back-btn {

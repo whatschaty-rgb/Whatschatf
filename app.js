@@ -461,13 +461,17 @@ function buildConvItem(conv) {
   return item;
 }
 
+function isMobileView() {
+  return window.innerWidth <= 960 || ('ontouchstart' in window && window.innerWidth <= 1024);
+}
+
 // OPEN CONVERSATION
 async function openConversation(conv) {
   state.activeConversation = conv;
   state.unreadCounts[conv.id] = 0;
   if (state.user) setLocalCache(`active_conv_${state.user.id}`, conv.id);
 
-  if (window.innerWidth < 768) {
+  if (isMobileView()) {
     $('#sidebar').classList.add('slide-out');
     $('#chat-area').classList.add('slide-in');
     if (!history.state?.chatOpen) {
@@ -1637,13 +1641,13 @@ function attachModalListeners() {
   });
 
   window.addEventListener('popstate', (e) => {
-    if (window.innerWidth < 768 && !e.state?.chatOpen) {
+    if (isMobileView() && !e.state?.chatOpen) {
       closeMobileChat(true);
     }
   });
 
   window.addEventListener('resize', () => {
-    if (window.innerWidth >= 768) {
+    if (!isMobileView()) {
       const sidebar = $('#sidebar');
       const chatArea = $('#chat-area');
       if (sidebar) sidebar.classList.remove('slide-out');
@@ -1739,7 +1743,7 @@ function attachVirtualKeyboardFix() {
   if ('visualViewport' in window) {
     window.visualViewport.addEventListener('resize', () => {
       const app = $('#app');
-      if (!app || window.innerWidth >= 768) return;
+      if (!app || !isMobileView()) return;
       const currentHeight = window.visualViewport.height;
       app.style.height = `${currentHeight}px`;
       if (state.activeConversation) {
