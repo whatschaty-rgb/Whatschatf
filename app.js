@@ -1357,39 +1357,37 @@ async function saveAdminAddUser() {
     });
 
     if (authError) {
-      showToast('Erro ao cadastrar usuário: ' + (authError.message || ''), 'error');
+      showToast('Erro ao cadastrar no Supabase: ' + (authError.message || ''), 'error');
       setButtonLoading(btn, false);
       return;
     }
 
-    const userId = authData.user?.id || (Date.now().toString(36) + Math.random().toString(36).substring(2));
-    const profilePayload = {
-      id: userId,
-      email,
-      full_name: name,
-      status_msg: 'Disponível',
-      role,
-      is_approved: isApproved,
-      is_online: false,
-      last_seen: new Date().toISOString()
-    };
+    const userId = authData.user?.id;
+    if (userId) {
+      const { error: updateErr } = await supabase.from('profiles')
+        .update({ full_name: name, role: role, is_approved: isApproved })
+        .eq('id', userId);
 
-    const { error: profError } = await supabase.from('profiles').upsert(profilePayload);
-    if (profError) {
-      console.warn('Aviso no perfil:', profError);
+      if (updateErr) {
+        await supabase.from('profiles').upsert({
+          id: userId,
+          email,
+          full_name: name,
+          status_msg: 'Disponível',
+          role,
+          is_approved: isApproved
+        });
+      }
     }
 
-    if (!state.adminUsers) state.adminUsers = [];
-    state.adminUsers = [profilePayload, ...state.adminUsers.filter(u => u.id !== userId)];
-    renderAdminUsers($('#admin-users-search')?.value.trim() || '');
-    
+    await loadAdminUsers();
     setButtonLoading(btn, false);
     closeModal('modal-admin-add-user');
-    showToast(`Usuário "${name}" criado com sucesso!`, 'success');
+    showToast(`Usuário "${name}" criado com sucesso no Supabase!`, 'success');
   } catch (err) {
     console.error('Erro em saveAdminAddUser:', err);
     setButtonLoading(btn, false);
-    showToast('Erro inesperado ao criar usuário', 'error');
+    showToast('Erro ao criar usuário: ' + (err.message || ''), 'error');
   }
 }
 
