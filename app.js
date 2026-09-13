@@ -1282,6 +1282,11 @@ function openAdminEditUserModal(u) {
   $('#admin-edit-user-status').value = u.status_msg || 'Disponível';
   $('#admin-edit-user-role').value = u.role || 'user';
   $('#admin-edit-user-approved').value = (u.is_approved !== false || u.role === 'admin') ? 'true' : 'false';
+  const pwdInput = $('#admin-edit-user-password');
+  if (pwdInput) {
+    pwdInput.value = '';
+    pwdInput.type = 'password';
+  }
   openModal('modal-admin-edit-user');
 }
 
@@ -1293,8 +1298,14 @@ async function saveAdminEditUser() {
   const statusMsg = $('#admin-edit-user-status').value.trim();
   const role = $('#admin-edit-user-role').value;
   const isApproved = $('#admin-edit-user-approved').value === 'true';
+  const newPassword = $('#admin-edit-user-password')?.value.trim();
 
   if (!name) { showToast('Informe o nome de exibição', 'error'); return; }
+
+  if (newPassword && newPassword.length < 6) {
+    showToast('A nova senha deve ter no mínimo 6 caracteres', 'error');
+    return;
+  }
 
   const btn = $('#btn-save-admin-edit-user');
   setButtonLoading(btn, true);
@@ -1303,12 +1314,34 @@ async function saveAdminEditUser() {
     .update({ full_name: name, status_msg: statusMsg, role, is_approved: isApproved })
     .eq('id', u.id);
 
-  setButtonLoading(btn, false);
   if (error) {
+    setButtonLoading(btn, false);
     showToast('Erro ao salvar usuário: ' + error.message, 'error');
     return;
   }
 
+  if (newPassword) {
+    let pwdError = null;
+    if (u.id === state.user?.id) {
+      const { error: e } = await supabase.auth.updateUser({ password: newPassword });
+      pwdError = e;
+    } else {
+      const { error: e } = await supabase.rpc('admin_update_user_password', {
+        target_user_id: u.id,
+        new_password: newPassword
+      });
+      pwdError = e;
+    }
+
+    if (pwdError) {
+      console.error('Erro ao alterar senha:', pwdError);
+      showToast('Perfil salvo, mas falhou ao alterar senha: ' + pwdError.message, 'warning');
+    } else {
+      showToast('Senha do usuário alterada com sucesso!', 'success');
+    }
+  }
+
+  setButtonLoading(btn, false);
   u.full_name = name;
   u.status_msg = statusMsg;
   u.role = role;
@@ -2085,11 +2118,15 @@ function attachAuthListeners() {
     });
   });
 
-  $$('.toggle-pass').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = btn.previousElementSibling;
-      input.type = input.type === 'password' ? 'text' : 'password';
-    });
+  document.addEventListener('click', e => {
+    const toggleBtn = e.target.closest('.toggle-pass');
+    if (toggleBtn) {
+      const wrap = toggleBtn.closest('.input-password-wrap');
+      const input = wrap ? wrap.querySelector('input') : toggleBtn.previousElementSibling;
+      if (input) {
+        input.type = input.type === 'password' ? 'text' : 'password';
+      }
+    }
   });
 
   $('#login-form').addEventListener('submit', async e => {
