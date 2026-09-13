@@ -84,10 +84,10 @@
 }
 
 [data-theme-color="emerald"] {
-  --accent:       #10b981;
-  --accent-hover: #34d399;
-  --accent-dark:  #047857;
-  --bg-msg-out:   #064e3b;
+  --accent:       #a0b910;
+  --accent-hover: #b9d413;
+  --accent-dark:  #75880b;
+  --bg-msg-out:   #4d5906;
 }
 
 /* ─── MODOS DE APARÊNCIA ────────────────────────────────── */
@@ -849,7 +849,7 @@ textarea { resize: none; }
 
 /* ─── PAPÉIS DE PAREDE DO CHAT (CHAT WALLPAPERS) ────────── */
 [data-chat-bg="slate"] .messages-container {
-  background-color: #0b141a !important;
+  background-color: #6cbcf1 !important;
   background-image: none !important;
 }
 
@@ -864,17 +864,17 @@ textarea { resize: none; }
 }
 
 [data-chat-bg="midnight"] .messages-container {
-  background-color: #0f172a !important;
+  background-color: #093fbd !important;
   background-image: none !important;
 }
 
 [data-chat-bg="plum"] .messages-container {
-  background-color: #1a0f1a !important;
+  background-color: #613961 !important;
   background-image: none !important;
 }
 
 [data-chat-bg="violet"] .messages-container {
-  background-color: #1e1b4b !important;
+  background-color: #312d64 !important;
   background-image: none !important;
 }
 
@@ -894,7 +894,7 @@ textarea { resize: none; }
 }
 
 [data-chat-bg="terracotta"] .messages-container {
-  background-color: #431407 !important;
+  background-color: #c02f07 !important;
   background-image: none !important;
 }
 
@@ -909,7 +909,7 @@ textarea { resize: none; }
 }
 
 [data-chat-bg="pastel-blue"] .messages-container {
-  background-color: #dbeafe !important;
+  background-color: #d28be4 !important;
   background-image: none !important;
 }
 
@@ -928,7 +928,8 @@ textarea { resize: none; }
 [data-chat-bg="softgrey"] .msg.in .msg-bubble,
 [data-chat-bg="pastel-blue"] .msg.in .msg-bubble,
 [data-chat-bg="pastel-green"] .msg.in .msg-bubble,
-[data-chat-bg="pastel-pink"] .msg.in .msg-bubble {
+[data-chat-bg="pastel-pink"] .msg.in .msg-bubble,
+[data-chat-bg="slate"] .msg.in .msg-bubble {
   background: #ffffff !important;
   color: #111b21 !important;
   box-shadow: 0 1px 3px rgba(0,0,0,0.15);
@@ -939,7 +940,8 @@ textarea { resize: none; }
 [data-chat-bg="softgrey"] .msg.in .msg-time,
 [data-chat-bg="pastel-blue"] .msg.in .msg-time,
 [data-chat-bg="pastel-green"] .msg.in .msg-time,
-[data-chat-bg="pastel-pink"] .msg.in .msg-time {
+[data-chat-bg="pastel-pink"] .msg.in .msg-time,
+[data-chat-bg="slate"] .msg.in .msg-time {
   color: #667781 !important;
 }
 
