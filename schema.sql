@@ -13,8 +13,16 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name   TEXT        NOT NULL DEFAULT '',
   avatar_url  TEXT,
   status_msg  TEXT        NOT NULL DEFAULT 'Disponivel',
+  role        TEXT        NOT NULL DEFAULT 'user',
   is_online   BOOLEAN     NOT NULL DEFAULT FALSE,
   last_seen   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- TABELA: system_settings
+CREATE TABLE IF NOT EXISTS public.system_settings (
+  key         TEXT        PRIMARY KEY,
+  value       JSONB       NOT NULL,
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

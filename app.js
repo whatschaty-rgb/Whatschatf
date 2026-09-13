@@ -31,6 +31,7 @@ const state = {
   unreadCounts: {},
   searchTimeout: null,
   editingMessageId: null,
+  adminUsers: [],
 };
 
 const EMOJIS = [
@@ -224,6 +225,7 @@ function clearAppState() {
   state.messages = [];
   state.participants = {};
   state.unreadCounts = {};
+  state.adminUsers = [];
 
   const list = $('#conversation-list');
   if (list) list.innerHTML = '';
@@ -231,11 +233,13 @@ function clearAppState() {
   if (msgList) msgList.innerHTML = '';
 
   hide('#chat-window');
+  hide('#btn-admin');
   show('#chat-welcome');
   closeModal('modal-new-group');
   closeModal('modal-profile');
   closeModal('modal-camera');
   closeModal('modal-edit-group');
+  closeModal('modal-admin');
 }
 
 // INIT
@@ -316,6 +320,11 @@ async function loadProfile() {
 function updateSidebarAvatar() {
   const img = $('#sidebar-avatar');
   if (img) img.src = avatarSrc(state.profile);
+  const btnAdmin = $('#btn-admin');
+  if (btnAdmin) {
+    if (state.profile?.role === 'admin') show(btnAdmin);
+    else hide(btnAdmin);
+  }
 }
 
 // CONVERSATIONS
@@ -1099,6 +1108,195 @@ async function saveGroupEdit() {
   showToast('Grupo atualizado com sucesso!', 'success');
 }
 
+// ─── ADMIN PANEL FUNCTIONS ─────────────────────────────────────
+async function openAdminModal() {
+  if (state.profile?.role !== 'admin') {
+    showToast('Acesso negado. Apenas administradores podem acessar este painel.', 'error');
+    return;
+  }
+  openModal('modal-admin');
+  await loadAdminUsers();
+  await loadAdminSettings();
+  await loadAdminPermissions();
+}
+
+async function loadAdminUsers() {
+  const container = $('#admin-users-list');
+  if (!container) return;
+  container.innerHTML = '<div class="date-sep"><span>Carregando usuários...</span></div>';
+
+  const { data, error } = await supabase.from('profiles').select('*').order('full_name', { ascending: true });
+  if (error) {
+    console.error('Erro ao carregar usuários admin:', error);
+    showToast('Erro ao carregar usuários: ' + error.message, 'error');
+    container.innerHTML = '<div class="date-sep"><span>Erro ao carregar usuários.</span></div>';
+    return;
+  }
+  state.adminUsers = data || [];
+  renderAdminUsers($('#admin-users-search')?.value.trim() || '');
+}
+
+function renderAdminUsers(query = '') {
+  const container = $('#admin-users-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  let users = state.adminUsers || [];
+  if (query) {
+    const q = query.toLowerCase();
+    users = users.filter(u =>
+      (u.full_name && u.full_name.toLowerCase().includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q))
+    );
+  }
+
+  if (!users.length) {
+    container.innerHTML = `<div style="padding: 16px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Nenhum usuário encontrado.</div>`;
+    return;
+  }
+
+  users.forEach(u => {
+    const isSelf = u.id === state.user?.id;
+    const role = u.role || 'user';
+    const item = createEl('div', { className: 'admin-user-item' });
+    item.innerHTML = `
+      <div class="admin-user-info">
+        <img src="${avatarSrc(u)}" alt="" class="avatar" />
+        <div class="admin-user-details">
+          <div class="admin-user-name">${escapeHtml(u.full_name || u.email)} ${isSelf ? ' (Você)' : ''}</div>
+          <div class="admin-user-email">${escapeHtml(u.email)}</div>
+        </div>
+      </div>
+      <div class="admin-user-actions">
+        <span class="role-badge ${role}">${role}</span>
+        <button class="btn-role-toggle" data-user-id="${u.id}">${role === 'admin' ? 'Tornar Usuário' : 'Tornar Admin'}</button>
+        ${!isSelf ? `<button class="btn-user-delete" data-user-id="${u.id}" title="Excluir Usuário"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` : ''}
+      </div>
+    `;
+
+    item.querySelector('.btn-role-toggle').addEventListener('click', () => toggleUserRole(u));
+    const delBtn = item.querySelector('.btn-user-delete');
+    if (delBtn) {
+      delBtn.addEventListener('click', () => deleteAdminUser(u));
+    }
+    container.append(item);
+  });
+}
+
+async function toggleUserRole(u) {
+  const newRole = u.role === 'admin' ? 'user' : 'admin';
+  if (u.id === state.user?.id && newRole === 'user') {
+    if (!confirm('Atenção: Ao remover seu próprio cargo de admin, você perderá acesso ao painel administrativo. Continuar?')) {
+      return;
+    }
+  }
+
+  const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', u.id);
+  if (error) {
+    showToast('Erro ao atualizar cargo: ' + error.message, 'error');
+    return;
+  }
+
+  u.role = newRole;
+  if (u.id === state.user?.id) {
+    state.profile.role = newRole;
+    updateSidebarAvatar();
+  }
+
+  renderAdminUsers($('#admin-users-search')?.value.trim() || '');
+  showToast(`Cargo de "${u.full_name || u.email}" alterado para ${newRole.toUpperCase()}`, 'success');
+}
+
+async function deleteAdminUser(u) {
+  if (!confirm(`Deseja realmente excluir a conta do usuário "${u.full_name || u.email}"? Esta ação não pode ser desfeita.`)) return;
+
+  const { error } = await supabase.from('profiles').delete().eq('id', u.id);
+  if (error) {
+    showToast('Erro ao excluir usuário: ' + error.message, 'error');
+    return;
+  }
+
+  state.adminUsers = state.adminUsers.filter(user => user.id !== u.id);
+  renderAdminUsers($('#admin-users-search')?.value.trim() || '');
+  showToast('Usuário excluído com sucesso!', 'success');
+}
+
+// ADMIN SETTINGS
+async function loadAdminSettings() {
+  const { data, error } = await supabase.from('system_settings').select('*').eq('key', 'global_settings').single();
+  if (!error && data?.value) {
+    const s = data.value;
+    if ($('#admin-setting-app-name')) $('#admin-setting-app-name').value = s.appName || 'WhatsChat Web';
+    if ($('#admin-setting-upload-limit')) $('#admin-setting-upload-limit').value = s.uploadLimit || 10;
+    if ($('#admin-setting-allow-reg')) $('#admin-setting-allow-reg').checked = s.allowRegistration !== false;
+    if ($('#admin-setting-maintenance')) $('#admin-setting-maintenance').checked = !!s.maintenanceMode;
+    if ($('#admin-setting-notice')) $('#admin-setting-notice').value = s.notice || '';
+  }
+}
+
+async function saveAdminSettings(e) {
+  e.preventDefault();
+  if (state.profile?.role !== 'admin') return;
+
+  const settings = {
+    appName: $('#admin-setting-app-name').value.trim() || 'WhatsChat Web',
+    uploadLimit: parseInt($('#admin-setting-upload-limit').value) || 10,
+    allowRegistration: $('#admin-setting-allow-reg').checked,
+    maintenanceMode: $('#admin-setting-maintenance').checked,
+    notice: $('#admin-setting-notice').value.trim(),
+  };
+
+  const { error } = await supabase.from('system_settings').upsert({
+    key: 'global_settings',
+    value: settings,
+    updated_at: new Date().toISOString()
+  });
+
+  if (error) {
+    showToast('Erro ao salvar configurações: ' + error.message, 'error');
+    return;
+  }
+
+  showToast('Configurações salvas com sucesso!', 'success');
+}
+
+// ADMIN PERMISSIONS
+async function loadAdminPermissions() {
+  const { data, error } = await supabase.from('system_settings').select('*').eq('key', 'permissions').single();
+  if (!error && data?.value) {
+    const p = data.value;
+    if ($('#perm-create-groups')) $('#perm-create-groups').checked = p.canCreateGroups !== false;
+    if ($('#perm-send-media')) $('#perm-send-media').checked = p.canSendMedia !== false;
+    if ($('#perm-edit-msgs')) $('#perm-edit-msgs').checked = p.canEditMessages !== false;
+    if ($('#perm-delete-msgs')) $('#perm-delete-msgs').checked = p.canDeleteMessages !== false;
+  }
+}
+
+async function saveAdminPermissions(e) {
+  e.preventDefault();
+  if (state.profile?.role !== 'admin') return;
+
+  const perms = {
+    canCreateGroups: $('#perm-create-groups').checked,
+    canSendMedia: $('#perm-send-media').checked,
+    canEditMessages: $('#perm-edit-msgs').checked,
+    canDeleteMessages: $('#perm-delete-msgs').checked,
+  };
+
+  const { error } = await supabase.from('system_settings').upsert({
+    key: 'permissions',
+    value: perms,
+    updated_at: new Date().toISOString()
+  });
+
+  if (error) {
+    showToast('Erro ao salvar permissões: ' + error.message, 'error');
+    return;
+  }
+
+  showToast('Permissões salvas com sucesso!', 'success');
+}
+
 
 function resetGroupModal() {
   $('#group-name-input').value = '';
@@ -1593,6 +1791,32 @@ function attachModalListeners() {
 
   $('#btn-profile').addEventListener('click', openProfileModal);
   $('#btn-save-profile').addEventListener('click', saveProfile);
+
+  $('#btn-admin').addEventListener('click', openAdminModal);
+
+  $$('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      $$('.admin-tab').forEach(t => t.classList.remove('active'));
+      $$('.admin-tab-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      const target = $(`#admin-${tab.dataset.adminTab}-tab`);
+      if (target) target.classList.add('active');
+      if (tab.dataset.adminTab === 'users') loadAdminUsers();
+    });
+  });
+
+  const adminSearch = $('#admin-users-search');
+  if (adminSearch) {
+    adminSearch.addEventListener('input', e => {
+      renderAdminUsers(e.target.value.trim());
+    });
+  }
+
+  const settingsForm = $('#admin-settings-form');
+  if (settingsForm) settingsForm.addEventListener('submit', saveAdminSettings);
+
+  const permsForm = $('#admin-permissions-form');
+  if (permsForm) permsForm.addEventListener('submit', saveAdminPermissions);
 
   $('#btn-edit-group').addEventListener('click', openEditGroupModal);
   $('#btn-save-group-edit').addEventListener('click', saveGroupEdit);
