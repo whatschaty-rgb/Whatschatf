@@ -105,6 +105,13 @@ textarea { resize: none; }
   margin-bottom: 28px;
 }
 
+.app-logo-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 168, 132, 0.3));
+}
+
 .auth-logo h1 {
   font-size: 1.6rem;
   font-weight: 700;
