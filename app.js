@@ -2444,6 +2444,38 @@ function attachModalListeners() {
   $('#btn-profile').addEventListener('click', openProfileModal);
   $('#btn-save-profile').addEventListener('click', saveProfile);
 
+  // Botão de atualizar conversas e reconectar realtime
+  $('#btn-refresh')?.addEventListener('click', async () => {
+    const icon = $('#refresh-icon');
+    const btn = $('#btn-refresh');
+    if (btn) btn.disabled = true;
+    if (icon) icon.classList.add('spin-anim');
+
+    try {
+      // Reconectar canais realtime
+      if (state.realtimeChannel) { supabase.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
+      if (state.convChannel) { supabase.removeChannel(state.convChannel); state.convChannel = null; }
+
+      // Recarregar lista de conversas do servidor
+      await loadConversations();
+
+      // Se estava em uma conversa, recarregar mensagens
+      if (state.activeConversation) {
+        await loadMessages(state.activeConversation.id);
+        subscribeToMessages(state.activeConversation.id);
+      }
+
+      showToast('Atualizado!', 'success', 2000);
+    } catch (err) {
+      showToast('Erro ao atualizar', 'error', 2500);
+    } finally {
+      setTimeout(() => {
+        if (icon) icon.classList.remove('spin-anim');
+        if (btn) btn.disabled = false;
+      }, 800);
+    }
+  });
+
   // Clicar na foto do perfil próprio na sidebar → abrir lightbox
   $('#sidebar-avatar')?.addEventListener('click', () => {
     const src = $('#sidebar-avatar')?.src;

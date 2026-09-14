@@ -343,6 +343,11 @@ textarea { resize: none; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.spin-anim {
+  animation: spin 0.7s linear infinite;
+  transform-origin: center;
+}
+
 .icon-btn {
   display: flex;
   align-items: center;
