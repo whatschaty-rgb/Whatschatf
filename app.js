@@ -483,6 +483,19 @@ function buildConvItem(conv) {
   
   item.addEventListener('click', () => openConversation(conv));
 
+  // Clicar no avatar da conversa → abrir lightbox com a foto de perfil
+  const avatarImg = item.querySelector('.conv-item-avatar .avatar');
+  if (avatarImg) {
+    avatarImg.style.cursor = 'pointer';
+    avatarImg.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const src = avatarImg.src;
+      if (src && !src.startsWith('data:')) {
+        window._openLightbox(src, conv.displayName);
+      }
+    });
+  }
+
   const deleteBtn = item.querySelector('.conv-item-delete');
   if (deleteBtn) {
     deleteBtn.addEventListener('click', (e) => {
@@ -767,18 +780,23 @@ window._toggleAudio = function(btn) {
   }
 };
 
-window._openLightbox = function(url) {
+window._openLightbox = function(url, caption = '') {
   let overlay = $('#lightbox-overlay');
   if (overlay) overlay.remove();
   overlay = createEl('div', { id: 'lightbox-overlay', className: 'lightbox-overlay' });
   overlay.innerHTML = `
-    <button class="lightbox-close" aria-label="Fechar">&times;</button>
-    <img class="lightbox-img" src="${url}" alt="Imagem ampliada" />
+    <button class="lightbox-close" aria-label="Fechar">&#x2715;</button>
+    <img class="lightbox-img" src="${url}" alt="${escapeHtml(caption || 'Imagem ampliada')}" />
+    ${caption ? `<div class="lightbox-caption">${escapeHtml(caption)}</div>` : ''}
   `;
   overlay.addEventListener('click', e => {
     if (e.target === overlay || e.target.closest('.lightbox-close')) {
-      overlay.remove();
+      overlay.style.animation = 'fadeOut .15s ease forwards';
+      setTimeout(() => overlay.remove(), 150);
     }
+  });
+  document.addEventListener('keydown', function escHandler(e) {
+    if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', escHandler); }
   });
   document.body.append(overlay);
 };
@@ -2425,6 +2443,24 @@ function attachModalListeners() {
 
   $('#btn-profile').addEventListener('click', openProfileModal);
   $('#btn-save-profile').addEventListener('click', saveProfile);
+
+  // Clicar na foto do perfil próprio na sidebar → abrir lightbox
+  $('#sidebar-avatar')?.addEventListener('click', () => {
+    const src = $('#sidebar-avatar')?.src;
+    if (src && !src.startsWith('data:')) {
+      const name = state.profile?.full_name || state.profile?.email || 'Meu perfil';
+      window._openLightbox(src, name);
+    }
+  });
+
+  // Clicar no avatar do contato no cabeçalho do chat → abrir lightbox
+  $('#chat-avatar')?.addEventListener('click', () => {
+    const src = $('#chat-avatar')?.src;
+    const conv = state.activeConversation;
+    if (src && !src.startsWith('data:') && conv) {
+      window._openLightbox(src, conv.displayName);
+    }
+  });
 
   $('#btn-admin').addEventListener('click', openAdminModal);
 
