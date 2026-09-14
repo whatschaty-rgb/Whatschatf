@@ -569,6 +569,9 @@ function updateChatHeader(conv) {
   const deleteBtn = $('#btn-delete-chat');
   if (deleteBtn) show(deleteBtn);
 
+  const refreshBtn = $('#btn-refresh-chat');
+  if (refreshBtn) show(refreshBtn);
+
   if (conv.is_group) {
     const count = conv.participants?.length || 0;
     $('#chat-status').textContent = `${count} participante${count !== 1 ? 's' : ''}`;
@@ -665,9 +668,11 @@ window._selectMessage = function(msg) {
   const btnCancel = $('#btn-hdr-cancel-sel');
   const btnEditGroup = $('#btn-edit-group');
   const btnDeleteChat = $('#btn-delete-chat');
+  const btnRefreshChat = $('#btn-refresh-chat');
 
   if (btnEditGroup) hide(btnEditGroup);
   if (btnDeleteChat) hide(btnDeleteChat);
+  if (btnRefreshChat) hide(btnRefreshChat);
 
   if (canEdit && btnEdit) show(btnEdit); else if (btnEdit) hide(btnEdit);
   if (canDelete && btnDelete) show(btnDelete); else if (btnDelete) hide(btnDelete);
@@ -683,6 +688,7 @@ window._deselectMessage = function() {
   const btnCancel = $('#btn-hdr-cancel-sel');
   const btnEditGroup = $('#btn-edit-group');
   const btnDeleteChat = $('#btn-delete-chat');
+  const btnRefreshChat = $('#btn-refresh-chat');
 
   if (btnEdit) hide(btnEdit);
   if (btnDelete) hide(btnDelete);
@@ -694,6 +700,9 @@ window._deselectMessage = function() {
     }
     if (btnDeleteChat) {
       show(btnDeleteChat);
+    }
+    if (btnRefreshChat) {
+      show(btnRefreshChat);
     }
   }
 };
@@ -2444,10 +2453,8 @@ function attachModalListeners() {
   $('#btn-profile').addEventListener('click', openProfileModal);
   $('#btn-save-profile').addEventListener('click', saveProfile);
 
-  // Botão de atualizar conversas e reconectar realtime
-  $('#btn-refresh')?.addEventListener('click', async () => {
-    const icon = $('#refresh-icon');
-    const btn = $('#btn-refresh');
+  // Função reutilizável de soft refresh (sidebar e chat header)
+  async function performSoftRefresh(btn, icon) {
     if (btn) btn.disabled = true;
     if (icon) icon.classList.add('spin-anim');
 
@@ -2474,6 +2481,15 @@ function attachModalListeners() {
         if (btn) btn.disabled = false;
       }, 800);
     }
+  }
+
+  // Botões de atualizar conversas e mensagens (sidebar e chat header)
+  $('#btn-refresh')?.addEventListener('click', () => {
+    performSoftRefresh($('#btn-refresh'), $('#refresh-icon'));
+  });
+
+  $('#btn-refresh-chat')?.addEventListener('click', () => {
+    performSoftRefresh($('#btn-refresh-chat'), $('#refresh-icon-chat'));
   });
 
   // Clicar na foto do perfil próprio na sidebar → abrir lightbox
