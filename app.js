@@ -2256,11 +2256,37 @@ function updateConvLastMessage(convId, msg) {
 
 function subscribeToConversationUpdates() {
   if (state.convChannel) supabase.removeChannel(state.convChannel);
-  state.convChannel = supabase.channel('new-conversations')
+  state.convChannel = supabase.channel('conversations-channel')
     .on('postgres_changes', {
       event: 'INSERT', schema: 'public', table: 'participants',
       filter: `user_id=eq.${state.user.id}`,
     }, async () => { await loadConversations(); })
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'conversations',
+    }, async (payload) => {
+      const updated = payload.new;
+      if (updated) {
+        const convInList = state.conversations.find(c => c.id === updated.id);
+        if (convInList) {
+          convInList.name = updated.name;
+          convInList.avatar_url = updated.avatar_url;
+          if (convInList.is_group) {
+            convInList.displayName = updated.name || 'Grupo';
+            convInList.displayAvatar = updated.avatar_url || getDefaultAvatar(convInList.displayName);
+          }
+          renderConversationList();
+        }
+        if (state.activeConversation?.id === updated.id) {
+          state.activeConversation.name = updated.name;
+          state.activeConversation.avatar_url = updated.avatar_url;
+          if (state.activeConversation.is_group) {
+            state.activeConversation.displayName = updated.name || 'Grupo';
+            state.activeConversation.displayAvatar = updated.avatar_url || getDefaultAvatar(state.activeConversation.displayName);
+          }
+          updateChatHeader(state.activeConversation);
+        }
+      }
+    })
     .subscribe();
 }
 
