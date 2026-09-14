@@ -470,9 +470,21 @@ function buildConvItem(conv) {
         <span class="conv-item-preview">${escapeHtml(previewText)}</span>
         ${unread > 0 ? `<span class="conv-item-badge">${unread}</span>` : ''}
       </div>
-    </div>`;
+    </div>
+    <button class="conv-item-delete" title="Excluir conversa" aria-label="Excluir conversa">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+    </button>`;
   
   item.addEventListener('click', () => openConversation(conv));
+
+  const deleteBtn = item.querySelector('.conv-item-delete');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteConversation(conv);
+    });
+  }
+
   return item;
 }
 
@@ -533,6 +545,9 @@ function updateChatHeader(conv) {
     if (conv.is_group) show(editBtn);
     else hide(editBtn);
   }
+
+  const deleteBtn = $('#btn-delete-chat');
+  if (deleteBtn) show(deleteBtn);
 
   if (conv.is_group) {
     const count = conv.participants?.length || 0;
@@ -629,8 +644,10 @@ window._selectMessage = function(msg) {
   const btnDelete = $('#btn-hdr-delete-msg');
   const btnCancel = $('#btn-hdr-cancel-sel');
   const btnEditGroup = $('#btn-edit-group');
+  const btnDeleteChat = $('#btn-delete-chat');
 
   if (btnEditGroup) hide(btnEditGroup);
+  if (btnDeleteChat) hide(btnDeleteChat);
 
   if (canEdit && btnEdit) show(btnEdit); else if (btnEdit) hide(btnEdit);
   if (canDelete && btnDelete) show(btnDelete); else if (btnDelete) hide(btnDelete);
@@ -645,13 +662,19 @@ window._deselectMessage = function() {
   const btnDelete = $('#btn-hdr-delete-msg');
   const btnCancel = $('#btn-hdr-cancel-sel');
   const btnEditGroup = $('#btn-edit-group');
+  const btnDeleteChat = $('#btn-delete-chat');
 
   if (btnEdit) hide(btnEdit);
   if (btnDelete) hide(btnDelete);
   if (btnCancel) hide(btnCancel);
 
-  if (state.activeConversation?.is_group && btnEditGroup) {
-    show(btnEditGroup);
+  if (state.activeConversation) {
+    if (state.activeConversation.is_group && btnEditGroup) {
+      show(btnEditGroup);
+    }
+    if (btnDeleteChat) {
+      show(btnDeleteChat);
+    }
   }
 };
 
@@ -2261,6 +2284,12 @@ function attachModalListeners() {
       const msgId = state.selectedMessageId;
       window._deselectMessage();
       await window._deleteMsg(msgId);
+    }
+  });
+
+  $('#btn-delete-chat')?.addEventListener('click', () => {
+    if (state.activeConversation) {
+      deleteConversation(state.activeConversation);
     }
   });
 

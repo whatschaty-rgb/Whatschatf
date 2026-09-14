@@ -572,7 +572,8 @@ textarea { resize: none; }
   justify-content: center;
 }
 
-.conv-item:hover .conv-item-delete {
+.conv-item:hover .conv-item-delete,
+.conv-item.active .conv-item-delete {
   opacity: 1;
 }
 
