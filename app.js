@@ -391,6 +391,7 @@ async function loadConversations() {
   subscribeToConversationUpdates();
   requestNotificationPermission();
   startRealtimeWatchdog();
+  startMessagesPolling();
 
   const lastActiveId = getLocalCache(`active_conv_${state.user.id}`);
   if (lastActiveId) {
@@ -544,6 +545,7 @@ async function openConversation(conv) {
   await loadMessages(conv.id);
   subscribeToMessages(conv.id);
   markMessagesAsRead(conv.id);
+  startMessagesPolling();
 }
 
 function closeMobileChat(fromPopState = false) {
@@ -2164,8 +2166,90 @@ async function markMessagesAsRead(convId) {
     .eq('conversation_id', convId).neq('sender_id', state.user.id).eq('is_read', false);
 }
 
+// AUTO-REFRESH: atualiza mensagens da conversa ativa a cada 2 segundos
+let _msgPollingTimer = null;
+let _isPollingMessages = false;
+
+function hasMessagesChanged(prev, next) {
+  if (!prev && !next) return false;
+  if (!prev || !next) return true;
+  if (prev.length !== next.length) return true;
+  for (let i = 0; i < prev.length; i++) {
+    const a = prev[i];
+    const b = next[i];
+    if (
+      a.id !== b.id ||
+      a.content !== b.content ||
+      a.is_edited !== b.is_edited ||
+      a.is_read !== b.is_read ||
+      a.deleted_for !== b.deleted_for ||
+      a.media_url !== b.media_url
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function startMessagesPolling() {
+  if (_msgPollingTimer) clearInterval(_msgPollingTimer);
+  _msgPollingTimer = setInterval(async () => {
+    if (!state.activeConversation || !state.user || _isPollingMessages) return;
+    const convId = state.activeConversation.id;
+    _isPollingMessages = true;
+
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*, sender:profiles(id, full_name, avatar_url, email)')
+        .eq('conversation_id', convId)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (error || !data || state.activeConversation?.id !== convId) return;
+
+      const currentMsgs = state.messages || [];
+      if (hasMessagesChanged(currentMsgs, data)) {
+        const prevIds = new Set(currentMsgs.map(m => m.id));
+        const newIncoming = data.filter(m => m.sender_id !== state.user?.id && !prevIds.has(m.id));
+
+        state.messages = data;
+        setLocalCache(`messages_${convId}`, data);
+        renderMessages();
+
+        if (newIncoming.length > 0) {
+          const lastNew = newIncoming[newIncoming.length - 1];
+          if (document.hidden) {
+            notifyIncomingMessage(lastNew, state.activeConversation);
+          } else {
+            playNotificationSound();
+          }
+          markMessagesAsRead(convId);
+        }
+
+        const container = $('#messages-container');
+        if (container) {
+          const isNearBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 250;
+          if (isNearBottom || newIncoming.length > 0) {
+            scrollToBottom();
+          }
+        }
+
+        if (data.length > 0) {
+          updateConvLastMessage(convId, data[data.length - 1]);
+        }
+      }
+    } catch (err) {
+      console.warn('[Polling] Erro na sincronização:', err);
+    } finally {
+      _isPollingMessages = false;
+    }
+  }, 2000);
+}
+
 function teardownRealtime() {
   if (_watchdogTimer) { clearInterval(_watchdogTimer); _watchdogTimer = null; }
+  if (_msgPollingTimer) { clearInterval(_msgPollingTimer); _msgPollingTimer = null; }
   if (state.realtimeChannel) supabase.removeChannel(state.realtimeChannel);
   if (state.presenceChannel) supabase.removeChannel(state.presenceChannel);
   if (state.convChannel) supabase.removeChannel(state.convChannel);
