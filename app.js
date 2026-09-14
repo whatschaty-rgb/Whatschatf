@@ -389,6 +389,7 @@ async function loadConversations() {
   setLocalCache(`conversations_${state.user.id}`, convs);
   renderConversationList();
   subscribeToConversationUpdates();
+  subscribeToGlobalMessages();
   requestNotificationPermission();
   startRealtimeWatchdog();
   startMessagesPolling();
@@ -1987,11 +1988,7 @@ function subscribeToMessages(convId) {
         markMessagesAsRead(convId);
         updateConvLastMessage(convId, data);
 
-        if (document.hidden) {
-          notifyIncomingMessage(data, conv);
-        } else {
-          playNotificationSound();
-        }
+        notifyIncomingMessage(data, conv);
 
         state.lastRealtimePing = Date.now();
       }
@@ -2098,29 +2095,50 @@ function notifyIncomingMessage(msg, conv) {
     try { navigator.vibrate([100, 50, 100]); } catch (e) { /* ignore */ }
   }
 
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      const senderName = conv?.displayName || msg.sender?.full_name || msg.sender?.email || 'WhatsChat';
-      let preview = msg.content || '';
-      if (msg.media_type === 'image') preview = '📷 Foto';
-      else if (msg.media_type === 'audio') preview = '🎵 Áudio';
+  const senderName = conv?.displayName || msg.sender?.full_name || msg.sender?.email || 'WhatsChat';
+  let preview = msg.content || '';
+  if (msg.media_type === 'image') preview = '📷 Foto';
+  else if (msg.media_type === 'audio') preview = '🎵 Áudio';
+  else if (!preview) preview = 'Nova mensagem';
 
-      const avatar = conv?.displayAvatar || msg.sender?.avatar_url || 'icon.png';
+  const avatar = conv?.displayAvatar || msg.sender?.avatar_url || 'icon.png';
 
-      const notif = new Notification(senderName, {
-        body: preview,
-        icon: avatar,
-        badge: 'icon.png',
-        tag: `conv_${msg.conversation_id}`,
-        renotify: true,
-      });
+  // Notificação visual na tela (Toast)
+  showToast(`💬 ${senderName}: ${preview}`, 'info', 4000);
 
-      notif.onclick = () => {
-        window.focus();
-        if (conv) openConversation(conv);
-      };
-    } catch (err) {
-      console.warn('Erro ao exibir notificação:', err);
+  // Notificação do navegador/sistema
+  if ('Notification' in window) {
+    if (Notification.permission === 'granted') {
+      try {
+        const notif = new Notification(senderName, {
+          body: preview,
+          icon: avatar,
+          badge: 'icon.png',
+          tag: `conv_${msg.conversation_id}`,
+          renotify: true,
+        });
+
+        notif.onclick = () => {
+          window.focus();
+          if (conv) openConversation(conv);
+        };
+      } catch (err) {
+        console.warn('Erro ao exibir notificação:', err);
+      }
+    } else if (Notification.permission === 'default') {
+      Notification.requestPermission().then(perm => {
+        if (perm === 'granted') {
+          try {
+            new Notification(senderName, {
+              body: preview,
+              icon: avatar,
+              badge: 'icon.png',
+              tag: `conv_${msg.conversation_id}`,
+              renotify: true,
+            });
+          } catch (e) {}
+        }
+      }).catch(() => {});
     }
   }
 }
@@ -2161,12 +2179,34 @@ function subscribeToConversationUpdates() {
     .subscribe();
 }
 
+function subscribeToGlobalMessages() {
+  if (state.globalMsgChannel) supabase.removeChannel(state.globalMsgChannel);
+  if (!state.user) return;
+  state.globalMsgChannel = supabase.channel('global-messages')
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'messages',
+    }, (payload) => {
+      const msg = payload.new;
+      if (!msg || msg.sender_id === state.user?.id) return;
+      if (state.activeConversation && state.activeConversation.id === msg.conversation_id) return;
+
+      const conv = state.conversations.find(c => c.id === msg.conversation_id);
+      if (conv) {
+        state.unreadCounts[msg.conversation_id] = (state.unreadCounts[msg.conversation_id] || 0) + 1;
+        updateDocumentTitleUnread();
+        updateConvLastMessage(msg.conversation_id, msg);
+        notifyIncomingMessage(msg, conv);
+      }
+    })
+    .subscribe();
+}
+
 async function markMessagesAsRead(convId) {
   await supabase.from('messages').update({ is_read: true })
     .eq('conversation_id', convId).neq('sender_id', state.user.id).eq('is_read', false);
 }
 
-// AUTO-REFRESH: atualiza mensagens da conversa ativa a cada 2 segundos
+// AUTO-REFRESH: atualiza mensagens da conversa ativa a cada 1 segundo
 let _msgPollingTimer = null;
 let _isPollingMessages = false;
 
@@ -2219,11 +2259,7 @@ function startMessagesPolling() {
 
         if (newIncoming.length > 0) {
           const lastNew = newIncoming[newIncoming.length - 1];
-          if (document.hidden) {
-            notifyIncomingMessage(lastNew, state.activeConversation);
-          } else {
-            playNotificationSound();
-          }
+          notifyIncomingMessage(lastNew, state.activeConversation);
           markMessagesAsRead(convId);
         }
 
@@ -2244,7 +2280,7 @@ function startMessagesPolling() {
     } finally {
       _isPollingMessages = false;
     }
-  }, 2000);
+  }, 1000);
 }
 
 function teardownRealtime() {
@@ -2546,6 +2582,7 @@ function attachModalListeners() {
       // Reconectar canais realtime
       if (state.realtimeChannel) { supabase.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
       if (state.convChannel) { supabase.removeChannel(state.convChannel); state.convChannel = null; }
+      if (state.globalMsgChannel) { supabase.removeChannel(state.globalMsgChannel); state.globalMsgChannel = null; }
 
       // Recarregar lista de conversas do servidor
       await loadConversations();

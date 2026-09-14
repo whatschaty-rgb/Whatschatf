@@ -2030,6 +2030,7 @@ input:checked + .slider:before {
 
 .toast.error { background: #7f1d1d; color: #fca5a5; }
 .toast.success { background: #064e3b; color: var(--accent-hover); }
+.toast.info { background: #1e3a8a; color: #bfdbfe; }
 
 @keyframes toastIn  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes toastOut { from { opacity: 1; transform: translateY(0); }    to { opacity: 0; transform: translateY(10px); } }
