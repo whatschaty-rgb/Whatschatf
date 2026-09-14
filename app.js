@@ -389,8 +389,8 @@ async function loadConversations() {
   setLocalCache(`conversations_${state.user.id}`, convs);
   renderConversationList();
   subscribeToConversationUpdates();
-  subscribeToGlobalMessages();
   requestNotificationPermission();
+  startRealtimeWatchdog();
 
   const lastActiveId = getLocalCache(`active_conv_${state.user.id}`);
   if (lastActiveId) {
@@ -503,7 +503,7 @@ async function openConversation(conv) {
   if (window._deselectMessage) window._deselectMessage();
   state.activeConversation = conv;
   state.unreadCounts[conv.id] = 0;
-  if (typeof updateDocumentTitleUnread === 'function') updateDocumentTitleUnread();
+  updateDocumentTitleUnread();
   if (state.user) setLocalCache(`active_conv_${state.user.id}`, conv.id);
 
   if (isMobileView()) {
@@ -1902,22 +1902,52 @@ function updateUserOnlineStatus(userId, online) {
 // REALTIME
 function subscribeToMessages(convId) {
   if (state.realtimeChannel) supabase.removeChannel(state.realtimeChannel);
-  state.realtimeChannel = supabase.channel(`messages:${convId}`)
+  state.realtimeChannel = supabase.channel(`messages:${convId}`, {
+    config: { broadcast: { self: false } },
+  })
     .on('postgres_changes', {
       event: '*', schema: 'public', table: 'messages',
       filter: `conversation_id=eq.${convId}`,
     }, async (payload) => {
       const { eventType, new: newRec, old: oldRec } = payload;
-      
+
       if (eventType === 'INSERT') {
-        const msg = newRec;
-        if (msg.sender_id === state.user?.id) return; // evitar duplicatas otimistas
-        const { data } = await supabase.from('messages')
-          .select('*, sender:profiles(id, full_name, avatar_url, email)')
-          .eq('id', msg.id).single();
-        if (!data) return;
+        const rawMsg = newRec;
+        // Pular mensagens próprias (já exibidas otimisticamente)
+        if (rawMsg.sender_id === state.user?.id) return;
+
+        // FIX: Usar dados do payload diretamente — sem fetch HTTP extra
+        // Enriquecer com sender do cache de participantes, sem nova requisição
+        const conv = state.conversations.find(c => c.id === convId);
+        const senderProfile = conv?.participants?.find(p => p.id === rawMsg.sender_id)
+          || state.participants[convId]?.find(p => p.id === rawMsg.sender_id)
+          || null;
+
+        const data = {
+          ...rawMsg,
+          sender: senderProfile ? {
+            id: senderProfile.id,
+            full_name: senderProfile.full_name,
+            avatar_url: senderProfile.avatar_url,
+            email: senderProfile.email,
+          } : null,
+        };
+
+        // Se sender não estiver em cache, buscar em segundo plano sem bloquear
+        if (!senderProfile) {
+          supabase.from('profiles').select('id,full_name,avatar_url,email')
+            .eq('id', rawMsg.sender_id).single()
+            .then(({ data: sd }) => {
+              if (sd) {
+                const el = $(`.msg[data-id="${rawMsg.id}"] .msg-sender`);
+                if (el) el.textContent = sd.full_name || sd.email || '';
+              }
+            });
+        }
+
         state.messages.push(data);
         setLocalCache(`messages_${convId}`, state.messages);
+
         const list = $('#messages-list');
         const i = state.messages.length - 1;
         if (needsDateSep(state.messages, i)) {
@@ -1927,16 +1957,17 @@ function subscribeToMessages(convId) {
         scrollToBottom();
         markMessagesAsRead(convId);
         updateConvLastMessage(convId, data);
+
         if (document.hidden) {
-          const conv = state.conversations.find(c => c.id === convId);
           notifyIncomingMessage(data, conv);
         } else {
           playNotificationSound();
         }
-      } 
+
+        state.lastRealtimePing = Date.now();
+      }
       else if (eventType === 'UPDATE') {
         const msg = newRec;
-        // Nao ignorar updates proprios - editar mensagem deve atualizar o DOM tb
         const idx = state.messages.findIndex(m => m.id === msg.id);
         if (idx !== -1) {
           state.messages[idx].content = msg.content;
@@ -1947,7 +1978,8 @@ function subscribeToMessages(convId) {
           if (oldEl) oldEl.replaceWith(buildMsgEl(state.messages[idx]));
           if (idx === state.messages.length - 1) updateConvLastMessage(convId, msg);
         }
-      } 
+        state.lastRealtimePing = Date.now();
+      }
       else if (eventType === 'DELETE') {
         const msgId = oldRec.id;
         state.messages = state.messages.filter(m => m.id !== msgId);
@@ -1964,8 +1996,18 @@ function subscribeToMessages(convId) {
         if (state.messages.length) {
           updateConvLastMessage(convId, state.messages[state.messages.length - 1]);
         }
+        state.lastRealtimePing = Date.now();
       }
-    }).subscribe();
+    })
+    .subscribe((status, err) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.warn('Realtime canal perdido, reconectando...', status, err);
+        setTimeout(() => subscribeToMessages(convId), 2000);
+      }
+      if (status === 'SUBSCRIBED') {
+        state.lastRealtimePing = Date.now();
+      }
+    });
 }
 
 let originalDocTitle = document.title || 'WhatsChat';
@@ -2054,42 +2096,21 @@ function notifyIncomingMessage(msg, conv) {
   }
 }
 
-function subscribeToGlobalMessages() {
-  if (!state.user) return;
-  if (state.globalMsgChannel) supabase.removeChannel(state.globalMsgChannel);
-
-  state.globalMsgChannel = supabase.channel('global-incoming-messages')
-    .on('postgres_changes', {
-      event: 'INSERT', schema: 'public', table: 'messages',
-    }, async (payload) => {
-      const newMsg = payload.new;
-      if (!newMsg || newMsg.sender_id === state.user?.id) return;
-
-      let conv = state.conversations.find(c => c.id === newMsg.conversation_id);
-      if (!conv) {
-        await loadConversations();
-        conv = state.conversations.find(c => c.id === newMsg.conversation_id);
-      }
-      if (!conv) return;
-
-      let fullMsg = newMsg;
-      try {
-        const { data } = await supabase.from('messages')
-          .select('*, sender:profiles(id, full_name, avatar_url, email)')
-          .eq('id', newMsg.id).single();
-        if (data) fullMsg = data;
-      } catch (e) { /* ignore */ }
-
-      const isCurrentActive = state.activeConversation?.id === newMsg.conversation_id && !document.hidden;
-      if (!isCurrentActive) {
-        state.unreadCounts[newMsg.conversation_id] = (state.unreadCounts[newMsg.conversation_id] || 0) + 1;
-        notifyIncomingMessage(fullMsg, conv);
-        updateDocumentTitleUnread();
-      }
-
-      updateConvLastMessage(newMsg.conversation_id, fullMsg);
-    })
-    .subscribe();
+// WATCHDOG: reconecta automaticamente se o canal realtime cair
+let _watchdogTimer = null;
+function startRealtimeWatchdog() {
+  if (_watchdogTimer) clearInterval(_watchdogTimer);
+  state.lastRealtimePing = Date.now();
+  _watchdogTimer = setInterval(() => {
+    if (!state.activeConversation || !state.user) return;
+    const idleSecs = (Date.now() - (state.lastRealtimePing || 0)) / 1000;
+    // Se não houve atividade no canal há mais de 90s, reconectar
+    if (idleSecs > 90) {
+      console.warn('[Watchdog] Realtime inativo há', Math.round(idleSecs), 's — reconectando...');
+      subscribeToMessages(state.activeConversation.id);
+      state.lastRealtimePing = Date.now();
+    }
+  }, 30000);
 }
 
 function updateConvLastMessage(convId, msg) {
@@ -2117,6 +2138,7 @@ async function markMessagesAsRead(convId) {
 }
 
 function teardownRealtime() {
+  if (_watchdogTimer) { clearInterval(_watchdogTimer); _watchdogTimer = null; }
   if (state.realtimeChannel) supabase.removeChannel(state.realtimeChannel);
   if (state.presenceChannel) supabase.removeChannel(state.presenceChannel);
   if (state.convChannel) supabase.removeChannel(state.convChannel);
