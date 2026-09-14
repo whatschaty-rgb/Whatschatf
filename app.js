@@ -245,6 +245,7 @@ function clearAppState() {
   hide('#btn-admin');
   show('#chat-welcome');
   closeModal('modal-new-group');
+  closeModal('modal-group-info');
   closeModal('modal-profile');
   closeModal('modal-camera');
   closeModal('modal-edit-group');
@@ -1226,6 +1227,90 @@ async function deleteConversation(conv) {
     console.error('Erro ao excluir conversa:', err);
     showToast('Erro ao excluir conversa: ' + (err.message || ''), 'error');
   }
+}
+
+// GROUP INFO / PARTICIPANTS
+async function openGroupInfoModal(conv) {
+  if (!conv) conv = state.activeConversation;
+  if (!conv || !conv.is_group) return;
+
+  $('#group-info-avatar').src = conv.displayAvatar;
+  $('#group-info-name').textContent = conv.displayName;
+
+  // Atualizar lista de participantes do servidor
+  await enrichConversation(conv);
+
+  const parts = conv.participants || [];
+  const count = parts.length;
+  $('#group-info-count').textContent = `${count} participante${count !== 1 ? 's' : ''}`;
+  $('#group-info-badge-count').textContent = count;
+
+  const list = $('#group-info-participants-list');
+  list.innerHTML = '';
+
+  if (!parts.length) {
+    list.innerHTML = '<p class="text-muted" style="text-align:center;padding:16px;">Nenhum participante encontrado.</p>';
+  } else {
+    parts.forEach(p => {
+      const isYou = p.id === state.user?.id;
+      const isCreator = conv.created_by === p.id;
+      const avatarUrl = avatarSrc(p);
+      const name = p.full_name || p.email || 'Usuário';
+
+      const item = createEl('div', { className: 'group-participant-item' });
+      const main = createEl('div', { className: 'group-participant-main' });
+      
+      const avatarWrap = createEl('div', { className: 'group-participant-avatar-wrap' });
+      const img = createEl('img', { 
+        src: avatarUrl, 
+        alt: name, 
+        className: 'avatar cursor-pointer',
+        title: 'Ver foto'
+      });
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (p.avatar_url) window._openLightbox(p.avatar_url, name);
+      });
+      avatarWrap.append(img);
+
+      const info = createEl('div', { className: 'group-participant-info' });
+      const nameEl = createEl('div', { className: 'group-participant-name' });
+      nameEl.textContent = name;
+
+      if (isYou) {
+        const youBadge = createEl('span', { className: 'participant-badge participant-badge-you', textContent: 'Você' });
+        nameEl.append(youBadge);
+      }
+      if (isCreator) {
+        const adminBadge = createEl('span', { className: 'participant-badge', textContent: 'Criador' });
+        nameEl.append(adminBadge);
+      }
+
+      const emailEl = createEl('div', { className: 'group-participant-email', textContent: p.email || '' });
+      info.append(nameEl, emailEl);
+
+      main.append(avatarWrap, info);
+
+      const statusTag = createEl('span', { 
+        className: `participant-status-tag ${p.is_online ? 'online' : 'offline'}`,
+        textContent: p.is_online ? 'Online' : 'Offline'
+      });
+
+      item.append(main, statusTag);
+      list.append(item);
+    });
+  }
+
+  const editBtn = $('#btn-group-info-edit');
+  if (editBtn) {
+    if (conv.is_group) {
+      show(editBtn);
+    } else {
+      hide(editBtn);
+    }
+  }
+
+  openModal('modal-group-info');
 }
 
 // EDIT GROUP
@@ -2625,6 +2710,26 @@ function attachModalListeners() {
   // Clicar no avatar do contato no cabeçalho do chat → abrir lightbox
   $('#chat-avatar')?.addEventListener('click', () => {
     const src = $('#chat-avatar')?.src;
+    const conv = state.activeConversation;
+    if (src && !src.startsWith('data:') && conv) {
+      window._openLightbox(src, conv.displayName);
+    }
+  });
+
+  // Clicar no nome do grupo no cabeçalho do chat → abrir lista de participantes
+  $('#chat-header-text')?.addEventListener('click', () => {
+    if (state.activeConversation?.is_group) {
+      openGroupInfoModal(state.activeConversation);
+    }
+  });
+
+  $('#btn-group-info-edit')?.addEventListener('click', () => {
+    closeModal('modal-group-info');
+    openEditGroupModal();
+  });
+
+  $('#group-info-avatar')?.addEventListener('click', () => {
+    const src = $('#group-info-avatar')?.src;
     const conv = state.activeConversation;
     if (src && !src.startsWith('data:') && conv) {
       window._openLightbox(src, conv.displayName);

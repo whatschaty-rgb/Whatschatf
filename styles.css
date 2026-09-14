@@ -1355,6 +1355,178 @@ textarea { resize: none; }
   flex-shrink: 0;
 }
 
+/* Group Info Modal */
+.modal-group-info-card {
+  max-width: 480px;
+}
+
+.group-info-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 0 16px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.avatar-xl {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--border);
+  transition: transform var(--transition), border-color var(--transition);
+}
+
+.avatar-xl:hover {
+  transform: scale(1.04);
+  border-color: var(--accent);
+}
+
+.group-info-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+.group-info-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.group-info-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.group-participants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.group-participant-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  transition: background var(--transition);
+}
+
+.group-participant-item:hover {
+  background: var(--bg-hover);
+}
+
+.group-participant-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.group-participant-avatar-wrap {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.group-participant-avatar-wrap img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.group-participant-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.group-participant-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-participant-email {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.participant-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(37, 211, 102, 0.15);
+  color: var(--accent);
+}
+
+.participant-badge-you {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.participant-status-tag {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.participant-status-tag.online {
+  color: var(--accent);
+  background: rgba(37, 211, 102, 0.1);
+}
+
+.participant-status-tag.offline {
+  color: var(--text-muted);
+  background: var(--bg-primary);
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.chat-header-text {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 6px;
+  transition: background var(--transition);
+}
+
+.chat-header-text:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 /* Camera Modal */
 .modal-camera-card {
   max-width: 560px;
