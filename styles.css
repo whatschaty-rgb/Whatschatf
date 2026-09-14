@@ -921,6 +921,9 @@ textarea { resize: none; }
 .tick svg { width: 14px; height: 14px; }
 .tick.sent    svg { fill: var(--text-secondary); }
 .tick.read    svg { fill: #53bdeb; }
+.tick.pending svg { fill: var(--text-secondary); opacity: 0.75; }
+
+.msg.msg-error { opacity: 0.65; filter: grayscale(30%); }
 
 /* Message types */
 .msg-image img {

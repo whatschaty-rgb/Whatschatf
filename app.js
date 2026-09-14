@@ -141,6 +141,9 @@ function needsDateSep(messages, index) {
 
 function ticksHTML(msg) {
   if (!state.user || msg.sender_id !== state.user.id) return '';
+  if (msg.isPending) {
+    return `<span class="msg-ticks tick pending" title="Enviando..."><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg></span>`;
+  }
   const cls = msg.is_read ? 'read' : 'sent';
   const svg = msg.is_read
     ? `<svg viewBox="0 0 18 11" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M17.394.004l-8.5 8.5-2.5-2.5-1.415 1.414 3.914 3.914 9.916-9.914L17.394.004zm-4.508 0l-4.5 4.5-.707-.707L6.264.382 4.85 1.796l5.536 5.536 5.914-5.914L12.886.004z"/></svg>`
@@ -824,56 +827,98 @@ async function sendMessage() {
     return;
   }
 
-  const payload = {
-    conversation_id: conv.id,
-    sender_id: state.user.id,
-    content: text || null,
-    media_type: 'text',
-    media_url: null,
-  };
-
-  if (media) {
-    try {
-      const ext = media.type === 'audio' ? 'webm' : 'jpg';
-      const path = `${state.user.id}/${conv.id}/${Date.now()}.${ext}`;
-      const storedPath = await uploadFile('chat-media', path, media.blob, media.blob.type);
-      payload.media_url = await getSignedUrl(storedPath);
-      payload.media_type = media.type;
-    } catch (err) {
-      showToast('Erro ao enviar midia: ' + err.message, 'error');
-      return;
-    }
-  }
-
+  // 1. LIMPEZA E RESET IMEDIATO DA INTERFACE (0ms de atraso)
   input.value = '';
   input.style.height = 'auto';
   clearPendingMedia();
   toggleSendButton();
-
-  const { data, error } = await supabase.from('messages')
-    .insert([payload])
-    .select('*, sender:profiles(id, full_name, avatar_url, email)')
-    .single();
-  if (error) { showToast('Erro ao enviar mensagem: ' + (error.message || ''), 'error'); return; }
-
-  state.messages.push(data);
-  setLocalCache(`messages_${conv.id}`, state.messages);
   removeLocalCache(`draft_${conv.id}`);
+
+  // 2. CRIAÇÃO DE MENSAGEM OTIMISTA TEMPORÁRIA
+  const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  let mediaUrl = null;
+  let mediaType = 'text';
+
+  if (media) {
+    mediaType = media.type;
+    mediaUrl = media.dataUrl || (media.blob ? URL.createObjectURL(media.blob) : null);
+  }
+
+  const tempMsg = {
+    id: tempId,
+    conversation_id: conv.id,
+    sender_id: state.user.id,
+    content: text || null,
+    media_type: mediaType,
+    media_url: mediaUrl,
+    created_at: new Date().toISOString(),
+    is_edited: false,
+    sender: state.profile || { id: state.user.id, full_name: state.user.email || 'Usuário', avatar_url: null },
+    isPending: true,
+  };
+
+  // 3. EXIBIÇÃO INSTANTÂNEA NA TELA DE CHAT E NA BARRA LATERAL
+  state.messages.push(tempMsg);
+  setLocalCache(`messages_${conv.id}`, state.messages);
 
   const list = $('#messages-list');
   const i = state.messages.length - 1;
   if (needsDateSep(state.messages, i)) {
-    list.append(createEl('div', { className: 'date-sep', innerHTML: `<span>${formatDateSep(data.created_at)}</span>` }));
+    list.append(createEl('div', { className: 'date-sep', innerHTML: `<span>${formatDateSep(tempMsg.created_at)}</span>` }));
   }
-  list.append(buildMsgEl(data));
-  scrollToBottom();
+  list.append(buildMsgEl(tempMsg));
+  scrollToBottom(true);
 
-  const convInList = state.conversations.find(c => c.id === conv.id);
-  if (convInList) {
-    convInList.lastMessage = { content: payload.content, media_type: payload.media_type, created_at: data.created_at };
-    setLocalCache(`conversations_${state.user.id}`, state.conversations);
-    renderConversationList();
-  }
+  updateConvLastMessage(conv.id, tempMsg);
+
+  // 4. ENVIO E SINCRONIZAÇÃO EM SEGUNDO PLANO COM O SUPABASE
+  (async () => {
+    try {
+      let finalMediaUrl = null;
+      if (media) {
+        const ext = media.type === 'audio' ? 'webm' : 'jpg';
+        const path = `${state.user.id}/${conv.id}/${Date.now()}.${ext}`;
+        const storedPath = await uploadFile('chat-media', path, media.blob, media.blob.type);
+        finalMediaUrl = await getSignedUrl(storedPath);
+      }
+
+      const payload = {
+        conversation_id: conv.id,
+        sender_id: state.user.id,
+        content: text || null,
+        media_type: mediaType,
+        media_url: finalMediaUrl,
+      };
+
+      const { data, error } = await supabase.from('messages')
+        .insert([payload])
+        .select('*, sender:profiles(id, full_name, avatar_url, email)')
+        .single();
+
+      if (error) throw error;
+
+      // Atualiza o estado da mensagem otimista com os dados reais do servidor
+      const idx = state.messages.findIndex(m => m.id === tempId);
+      if (idx !== -1) {
+        state.messages[idx] = data;
+        setLocalCache(`messages_${conv.id}`, state.messages);
+      }
+
+      const tempEl = $(`.msg[data-id="${tempId}"]`);
+      if (tempEl) {
+        tempEl.replaceWith(buildMsgEl(data));
+      }
+      updateConvLastMessage(conv.id, data);
+    } catch (err) {
+      console.error('Erro ao enviar mensagem em segundo plano:', err);
+      showToast('Erro ao enviar mensagem: ' + (err.message || ''), 'error');
+      const failedEl = $(`.msg[data-id="${tempId}"]`);
+      if (failedEl) {
+        failedEl.classList.add('msg-error');
+        failedEl.style.opacity = '0.6';
+      }
+    }
+  })();
 }
 
 // EDIT CANCEL & DELETE
