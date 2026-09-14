@@ -20,6 +20,7 @@ const state = {
   realtimeChannel: null,
   presenceChannel: null,
   convChannel: null,
+  globalMsgChannel: null,
   recorder: null,
   recorderChunks: [],
   recorderTimer: null,
@@ -388,6 +389,8 @@ async function loadConversations() {
   setLocalCache(`conversations_${state.user.id}`, convs);
   renderConversationList();
   subscribeToConversationUpdates();
+  subscribeToGlobalMessages();
+  requestNotificationPermission();
 
   const lastActiveId = getLocalCache(`active_conv_${state.user.id}`);
   if (lastActiveId) {
@@ -500,6 +503,7 @@ async function openConversation(conv) {
   if (window._deselectMessage) window._deselectMessage();
   state.activeConversation = conv;
   state.unreadCounts[conv.id] = 0;
+  if (typeof updateDocumentTitleUnread === 'function') updateDocumentTitleUnread();
   if (state.user) setLocalCache(`active_conv_${state.user.id}`, conv.id);
 
   if (isMobileView()) {
@@ -1923,6 +1927,12 @@ function subscribeToMessages(convId) {
         scrollToBottom();
         markMessagesAsRead(convId);
         updateConvLastMessage(convId, data);
+        if (document.hidden) {
+          const conv = state.conversations.find(c => c.id === convId);
+          notifyIncomingMessage(data, conv);
+        } else {
+          playNotificationSound();
+        }
       } 
       else if (eventType === 'UPDATE') {
         const msg = newRec;
@@ -1958,6 +1968,130 @@ function subscribeToMessages(convId) {
     }).subscribe();
 }
 
+let originalDocTitle = document.title || 'WhatsChat';
+
+function updateDocumentTitleUnread() {
+  const total = Object.values(state.unreadCounts || {}).reduce((a, b) => a + (b || 0), 0);
+  if (total > 0) {
+    document.title = `(${total}) ${originalDocTitle}`;
+  } else {
+    document.title = originalDocTitle;
+  }
+}
+
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
+}
+
+function playNotificationSound() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, now);
+    gain1.gain.setValueAtTime(0.15, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.15);
+
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, now + 0.12);
+    gain2.gain.setValueAtTime(0.2, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.35);
+  } catch (err) {
+    console.warn('Erro ao tocar som de notificação:', err);
+  }
+}
+
+function notifyIncomingMessage(msg, conv) {
+  if (!msg || msg.sender_id === state.user?.id) return;
+
+  playNotificationSound();
+
+  if ('vibrate' in navigator) {
+    try { navigator.vibrate([100, 50, 100]); } catch (e) { /* ignore */ }
+  }
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      const senderName = conv?.displayName || msg.sender?.full_name || msg.sender?.email || 'WhatsChat';
+      let preview = msg.content || '';
+      if (msg.media_type === 'image') preview = '📷 Foto';
+      else if (msg.media_type === 'audio') preview = '🎵 Áudio';
+
+      const avatar = conv?.displayAvatar || msg.sender?.avatar_url || 'icon.png';
+
+      const notif = new Notification(senderName, {
+        body: preview,
+        icon: avatar,
+        badge: 'icon.png',
+        tag: `conv_${msg.conversation_id}`,
+        renotify: true,
+      });
+
+      notif.onclick = () => {
+        window.focus();
+        if (conv) openConversation(conv);
+      };
+    } catch (err) {
+      console.warn('Erro ao exibir notificação:', err);
+    }
+  }
+}
+
+function subscribeToGlobalMessages() {
+  if (!state.user) return;
+  if (state.globalMsgChannel) supabase.removeChannel(state.globalMsgChannel);
+
+  state.globalMsgChannel = supabase.channel('global-incoming-messages')
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'messages',
+    }, async (payload) => {
+      const newMsg = payload.new;
+      if (!newMsg || newMsg.sender_id === state.user?.id) return;
+
+      let conv = state.conversations.find(c => c.id === newMsg.conversation_id);
+      if (!conv) {
+        await loadConversations();
+        conv = state.conversations.find(c => c.id === newMsg.conversation_id);
+      }
+      if (!conv) return;
+
+      let fullMsg = newMsg;
+      try {
+        const { data } = await supabase.from('messages')
+          .select('*, sender:profiles(id, full_name, avatar_url, email)')
+          .eq('id', newMsg.id).single();
+        if (data) fullMsg = data;
+      } catch (e) { /* ignore */ }
+
+      const isCurrentActive = state.activeConversation?.id === newMsg.conversation_id && !document.hidden;
+      if (!isCurrentActive) {
+        state.unreadCounts[newMsg.conversation_id] = (state.unreadCounts[newMsg.conversation_id] || 0) + 1;
+        notifyIncomingMessage(fullMsg, conv);
+        updateDocumentTitleUnread();
+      }
+
+      updateConvLastMessage(newMsg.conversation_id, fullMsg);
+    })
+    .subscribe();
+}
+
 function updateConvLastMessage(convId, msg) {
   const convInList = state.conversations.find(c => c.id === convId);
   if (convInList) {
@@ -1986,6 +2120,7 @@ function teardownRealtime() {
   if (state.realtimeChannel) supabase.removeChannel(state.realtimeChannel);
   if (state.presenceChannel) supabase.removeChannel(state.presenceChannel);
   if (state.convChannel) supabase.removeChannel(state.convChannel);
+  if (state.globalMsgChannel) supabase.removeChannel(state.globalMsgChannel);
 }
 
 // THEME MANAGEMENT
