@@ -574,12 +574,26 @@ async function loadMessages(convId) {
   }
 }
 
+function getHiddenMessageIds(userId) {
+  if (!userId) return new Set();
+  const arr = getLocalCache(`hidden_msgs_${userId}`) || [];
+  return new Set(arr);
+}
+
+function hideMessageLocally(userId, msgId) {
+  if (!userId || !msgId) return;
+  const set = getHiddenMessageIds(userId);
+  set.add(msgId);
+  setLocalCache(`hidden_msgs_${userId}`, Array.from(set));
+}
+
 function renderMessages() {
   const list = $('#messages-list');
   list.innerHTML = '';
-  const msgs = state.messages;
+  const hiddenIds = getHiddenMessageIds(state.user?.id);
+  const msgs = state.messages.filter(m => !hiddenIds.has(m.id));
   if (!msgs.length) {
-    list.innerHTML = '<div class="date-sep"><span>Sem mensagens. Diga ola! 👋</span></div>';
+    list.innerHTML = '<div class="date-sep"><span>Sem mensagens. Diga olá! 👋</span></div>';
     return;
   }
   msgs.forEach((msg, i) => {
@@ -870,26 +884,30 @@ window._cancelEdit = function() {
 };
 
 window._deleteMsg = async function(msgId) {
-  if (!confirm('Deseja excluir esta mensagem?')) return;
+  const msg = state.messages.find(m => m.id === msgId);
+  if (!msg) return;
+
   const conv = state.activeConversation;
-  const { error } = await supabase.from('messages').delete().eq('id', msgId);
-  if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
-  
-  state.messages = state.messages.filter(m => m.id !== msgId);
-  if (conv) setLocalCache(`messages_${conv.id}`, state.messages);
-  
-  const msgEl = $(`.msg[data-id="${msgId}"]`);
-  if (msgEl) {
-    const prev = msgEl.previousElementSibling;
-    const next = msgEl.nextElementSibling;
-    msgEl.remove();
-    // Remover o date-sep se ficar sozinho
-    if (prev?.classList.contains('date-sep') && (!next || next.classList.contains('date-sep'))) {
-      prev.remove();
-    }
+  const isOwner = msg.sender_id === state.user?.id;
+  const isAdmin = state.profile?.role === 'admin';
+
+  if (isOwner || isAdmin) {
+    if (!confirm('Deseja excluir esta mensagem para todos na conversa?')) return;
+    const { error } = await supabase.from('messages').delete().eq('id', msgId);
+    if (error) { showToast('Erro ao excluir mensagem: ' + error.message, 'error'); return; }
+
+    state.messages = state.messages.filter(m => m.id !== msgId);
+    if (conv) setLocalCache(`messages_${conv.id}`, state.messages);
+    removeMsgElFromDOM(msgId);
+    showToast('Mensagem apagada para todos', 'success');
+  } else {
+    if (!confirm('Deseja apagar esta mensagem no seu dispositivo? (Ela continuará visível para o outro usuário)')) return;
+    hideMessageLocally(state.user?.id, msgId);
+    state.messages = state.messages.filter(m => m.id !== msgId);
+    removeMsgElFromDOM(msgId);
+    showToast('Mensagem apagada para você', 'success');
   }
-  
-  // Update last message preview if needed
+
   if (conv && state.messages.length) {
     const convInList = state.conversations.find(c => c.id === conv.id);
     if (convInList) {
@@ -900,6 +918,18 @@ window._deleteMsg = async function(msgId) {
     }
   }
 };
+
+function removeMsgElFromDOM(msgId) {
+  const msgEl = $(`.msg[data-id="${msgId}"]`);
+  if (msgEl) {
+    const prev = msgEl.previousElementSibling;
+    const next = msgEl.nextElementSibling;
+    msgEl.remove();
+    if (prev?.classList.contains('date-sep') && (!next || next.classList.contains('date-sep'))) {
+      prev.remove();
+    }
+  }
+}
 
 function clearPendingMedia() {
   state.pendingMedia = null;
